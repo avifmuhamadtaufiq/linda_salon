@@ -1,0 +1,3 @@
+# Override bahasa utama ke Python
+*.html linguist-detectable=false
+*.py linguist-detectable=true
