@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}Jadwal Sewa{% endblock %}
+{% block page_title %}Jadwal Pengembalian{% endblock %}
+{% block content %}
+
+{% if pengembalian_terlambat %}
+<div class="card mb-3" style="border-color:rgba(220,80,80,0.3);">
+    <div class="card-header" style="color:#B94040; background:rgba(220,80,80,0.05);">
+        <i class="bi bi-exclamation-circle me-2"></i> Terlambat Dikembalikan ({{ pengembalian_terlambat.count }})
+    </div>
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead><tr><th>No. Transaksi</th><th>Pelanggan</th><th>HP</th><th>Jatuh Tempo</th><th>Keterlambatan</th><th>Aksi</th></tr></thead>
+            <tbody>
+                {% for trx in pengembalian_terlambat %}
+                <tr>
+                    <td><a href="{% url 'transaksi_detail' trx.pk %}" style="color:var(--gold-dark); text-decoration:none; font-weight:600;">{{ trx.no_transaksi }}</a></td>
+                    <td>{{ trx.pelanggan_nama }}</td>
+                    <td>{{ trx.pelanggan_hp }}</td>
+                    <td style="color:#B94040;">{{ trx.tanggal_kembali|date:"d M Y" }}</td>
+                    <td style="color:#B94040; font-weight:600;">{{ today|timeuntil:trx.tanggal_kembali }}</td>
+                    <td><a href="{% url 'transaksi_kembali' trx.pk %}" class="btn btn-sm btn-gold">Proses</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<div class="card mb-3">
+    <div class="card-header" style="color:#20948A;">
+        <i class="bi bi-calendar-check me-2"></i> Kembali Hari Ini ({{ pengembalian_hari_ini.count }})
+    </div>
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead><tr><th>No. Transaksi</th><th>Pelanggan</th><th>HP</th><th>Barang</th><th>Aksi</th></tr></thead>
+            <tbody>
+                {% for trx in pengembalian_hari_ini %}
+                <tr>
+                    <td><a href="{% url 'transaksi_detail' trx.pk %}" style="color:var(--gold-dark); text-decoration:none; font-weight:600;">{{ trx.no_transaksi }}</a></td>
+                    <td>{{ trx.pelanggan_nama }}</td>
+                    <td>{{ trx.pelanggan_hp }}</td>
+                    <td style="font-size:0.83rem;">{{ trx.detail.count }} jenis barang</td>
+                    <td><a href="{% url 'transaksi_kembali' trx.pk %}" class="btn btn-sm btn-gold">Proses</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center py-3" style="color:var(--muted);">Tidak ada pengembalian hari ini</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-calendar3 me-2"></i> Akan Datang ({{ akan_datang.count }})
+    </div>
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead><tr><th>No. Transaksi</th><th>Pelanggan</th><th>Tgl Sewa</th><th>Jatuh Tempo</th><th>Sisa Hari</th><th>Aksi</th></tr></thead>
+            <tbody>
+                {% for trx in akan_datang %}
+                <tr>
+                    <td><a href="{% url 'transaksi_detail' trx.pk %}" style="color:var(--gold-dark); text-decoration:none; font-weight:600;">{{ trx.no_transaksi }}</a></td>
+                    <td>{{ trx.pelanggan_nama }}</td>
+                    <td>{{ trx.tanggal_sewa|date:"d M Y" }}</td>
+                    <td>{{ trx.tanggal_kembali|date:"d M Y" }}</td>
+                    <td style="color:var(--gold-dark); font-weight:500;">{{ today|timesince:trx.tanggal_kembali }}</td>
+                    <td><a href="{% url 'transaksi_detail' trx.pk %}" class="btn btn-sm btn-outline-gold">Detail</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center py-3" style="color:var(--muted);">Tidak ada jadwal mendatang</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Keuangan - {{ bulan_nama }} {{ tahun }} - Linda Salon</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 12px;
+            color: #1a1a1a;
+            background: white;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px double #C9A84C;
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1A1208;
+            letter-spacing: 0.05em;
+        }
+        .header h2 {
+            font-size: 14px;
+            font-weight: 400;
+            color: #8A7355;
+            margin-top: 4px;
+        }
+        .header .periode {
+            font-size: 13px;
+            font-weight: 600;
+            color: #C9A84C;
+            margin-top: 8px;
+        }
+        .header .generated {
+            font-size: 10px;
+            color: #aaa;
+            margin-top: 4px;
+        }
+
+        /* Summary cards */
+        .summary {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .summary-card {
+            flex: 1;
+            border: 1px solid #EDE8DC;
+            border-radius: 8px;
+            padding: 12px 14px;
+            text-align: center;
+        }
+        .summary-card .label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #8A7355;
+            margin-bottom: 4px;
+        }
+        .summary-card .value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1A1208;
+        }
+        .summary-card.gold { border-color: #C9A84C; background: #FFFBF0; }
+        .summary-card.gold .value { color: #9A7A2E; }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        thead th {
+            background: #FAF7F0;
+            border: 1px solid #EDE8DC;
+            padding: 8px 10px;
+            text-align: left;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #8A7355;
+            font-weight: 600;
+        }
+        tbody td {
+            border: 1px solid #EDE8DC;
+            padding: 7px 10px;
+            font-size: 11px;
+        }
+        tbody tr:nth-child(even) { background: #FAF7F0; }
+        tfoot td {
+            border: 1px solid #C9A84C;
+            padding: 8px 10px;
+            font-weight: 700;
+            background: #FFFBF0;
+            font-size: 11px;
+        }
+
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+
+        /* Footer */
+        .footer {
+            border-top: 1px solid #EDE8DC;
+            padding-top: 12px;
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #aaa;
+        }
+        .ttd {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .ttd-box {
+            display: inline-block;
+            width: 180px;
+            border-top: 1px solid #333;
+            padding-top: 4px;
+            margin-top: 60px;
+            font-size: 11px;
+        }
+
+        /* Print button - tidak ikut tercetak */
+        .no-print {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 999;
+        }
+        .btn-print {
+            background: #C9A84C;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-back {
+            background: #f0f0f0;
+            color: #333;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+            body { padding: 0; }
+            @page {
+                margin: 1.5cm;
+                size: A4;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="no-print">
+    <a href="javascript:history.back()" class="btn-back">← Kembali</a>
+    <button class="btn-print" onclick="window.print()">🖨️ Print</button>
+    <button class="btn-print" onclick="downloadPDF()" style="background:#1A1208;">⬇️ Simpan PDF</button>
+</div>
+
+<!-- Header -->
+<div class="header">
+    <h1>✦ Linda Salon</h1>
+    <h2>Manajemen Sewa Perlengkapan Pernikahan</h2>
+    <div class="periode">LAPORAN KEUANGAN — {{ bulan_nama|upper }} {{ tahun }}</div>
+    <div class="generated">Dicetak: {{ generated_at|date:"d F Y, H:i" }} WIB</div>
+</div>
+
+<!-- Summary -->
+<div class="summary">
+    <div class="summary-card gold">
+        <div class="label">Total Omzet</div>
+        <div class="value">Rp {{ total_omzet|floatformat:0 }}</div>
+    </div>
+    <div class="summary-card">
+        <div class="label">Total DP Masuk</div>
+        <div class="value">Rp {{ total_dp|floatformat:0 }}</div>
+    </div>
+    <div class="summary-card">
+        <div class="label">Total Sisa Bayar</div>
+        <div class="value">Rp {{ total_sisa|floatformat:0 }}</div>
+    </div>
+    <div class="summary-card">
+        <div class="label">Jumlah Transaksi</div>
+        <div class="value">{{ total_transaksi }}</div>
+    </div>
+</div>
+
+<!-- Tabel Transaksi -->
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>No. Transaksi</th>
+            <th>Pelanggan</th>
+            <th>Acara</th>
+            <th>Tgl Sewa</th>
+            <th>Tgl Kembali</th>
+            <th class="text-right">Total</th>
+            <th class="text-right">DP</th>
+            <th class="text-right">Sisa</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for trx in transaksi_list %}
+        <tr>
+            <td class="text-center">{{ forloop.counter }}</td>
+            <td><strong>{{ trx.no_transaksi }}</strong></td>
+            <td>{{ trx.pelanggan_nama }}</td>
+            <td>{{ trx.acara|default:"-" }}</td>
+            <td>{{ trx.tanggal_sewa|date:"d/m/Y" }}</td>
+            <td>{{ trx.tanggal_kembali_aktual|date:"d/m/Y" }}</td>
+            <td class="text-right">Rp {{ trx.total_harga|floatformat:0 }}</td>
+            <td class="text-right">Rp {{ trx.uang_muka|floatformat:0 }}</td>
+            <td class="text-right">Rp {{ trx.sisa_bayar|floatformat:0 }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="9" class="text-center" style="padding:20px; color:#aaa;">
+                Tidak ada transaksi pada periode ini
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr>
+            <td colspan="6" class="text-right">TOTAL</td>
+            <td class="text-right">Rp {{ total_omzet|floatformat:0 }}</td>
+            <td class="text-right">Rp {{ total_dp|floatformat:0 }}</td>
+            <td class="text-right">Rp {{ total_sisa|floatformat:0 }}</td>
+        </tr>
+    </tfoot>
+</table>
+
+<!-- TTD -->
+<div class="ttd">
+    <div style="display:inline-flex; gap:80px;">
+        <div>
+            <div style="font-size:11px; color:#555;">Mengetahui,</div>
+            <div class="ttd-box">Pemilik / Admin</div>
+        </div>
+        <div>
+            <div style="font-size:11px; color:#555;">Dibuat oleh,</div>
+            <div class="ttd-box">Petugas</div>
+        </div>
+    </div>
+</div>
+
+<div class="footer">
+    <div>Linda Salon — Sistem Manajemen Sewa Pernikahan</div>
+    <div>Laporan {{ bulan_nama }} {{ tahun }}</div>
+</div>
+
+<script>
+function downloadPDF() {
+    window.print();
+}
+// Auto trigger jika dari tombol PDF
+if (window.location.search.includes('pdf=1')) {
+    setTimeout(() => window.print(), 500);
+}
+</script>
+</body>
+</html>

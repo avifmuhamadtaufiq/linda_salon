@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block title %}{{ transaksi.no_transaksi }}{% endblock %}
+{% block page_title %}Detail Transaksi{% endblock %}
+{% block topbar_actions %}
+{% if transaksi.status == 'aktif' %}
+<a href="{% url 'transaksi_kembali' transaksi.pk %}" class="btn btn-gold btn-sm">
+    <i class="bi bi-arrow-return-left me-1"></i> Proses Pengembalian
+</a>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card p-3 mb-3">
+            <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted);">No. Transaksi</div>
+            <div style="font-family:'Cormorant Garamond',serif; font-size:1.4rem; font-weight:700; color:var(--gold-dark);">{{ transaksi.no_transaksi }}</div>
+            <span class="badge-{{ transaksi.status }} d-inline-block mt-1">{{ transaksi.get_status_display }}</span>
+            <hr style="border-color:#EDE8DC; margin:12px 0;">
+            <div class="mb-2"><div style="font-size:0.75rem; color:var(--muted);">Pelanggan</div><strong>{{ transaksi.pelanggan_nama }}</strong></div>
+            <div class="mb-2"><div style="font-size:0.75rem; color:var(--muted);">No. HP</div>{{ transaksi.pelanggan_hp }}</div>
+            {% if transaksi.acara %}<div class="mb-2"><div style="font-size:0.75rem; color:var(--muted);">Acara</div>{{ transaksi.acara }}</div>{% endif %}
+            {% if transaksi.pelanggan_alamat %}<div class="mb-2"><div style="font-size:0.75rem; color:var(--muted);">Alamat</div>{{ transaksi.pelanggan_alamat }}</div>{% endif %}
+            <hr style="border-color:#EDE8DC; margin:12px 0;">
+            <div class="mb-2"><div style="font-size:0.75rem; color:var(--muted);">Tanggal Sewa</div>{{ transaksi.tanggal_sewa|date:"d F Y" }}</div>
+            <div class="mb-2"><div style="font-size:0.75rem; color:var(--muted);">Tanggal Kembali</div>{{ transaksi.tanggal_kembali|date:"d F Y" }}</div>
+            {% if transaksi.tanggal_kembali_aktual %}<div class="mb-2"><div style="font-size:0.75rem; color:var(--muted);">Kembali Aktual</div>{{ transaksi.tanggal_kembali_aktual|date:"d F Y" }}</div>{% endif %}
+            <hr style="border-color:#EDE8DC; margin:12px 0;">
+            <div class="d-flex justify-content-between mb-2">
+                <span style="font-size:0.83rem; color:var(--muted);">Total</span>
+                <strong>Rp {{ transaksi.total_harga|floatformat:0 }}</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+                <span style="font-size:0.83rem; color:var(--muted);">Uang Muka</span>
+                <span style="color:#20948A;">Rp {{ transaksi.uang_muka|floatformat:0 }}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span style="font-size:0.83rem; color:var(--muted);">Sisa Bayar</span>
+                <strong style="color:#B94040;">Rp {{ transaksi.sisa_bayar|floatformat:0 }}</strong>
+            </div>
+        </div>
+        <div style="font-size:0.78rem; color:var(--muted); text-align:center;">
+            Dibuat oleh: {{ transaksi.dibuat_oleh.get_full_name|default:transaksi.dibuat_oleh.username }}<br>
+            {{ transaksi.created_at|date:"d M Y H:i" }}
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">Daftar Barang Disewa</div>
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr><th>Barang</th><th>Jumlah</th><th>Harga Satuan</th><th>Subtotal</th><th>Kondisi Keluar</th><th>Kondisi Kembali</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for d in detail %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'barang_detail' d.barang.pk %}" style="color:var(--text); text-decoration:none; font-weight:500;">{{ d.barang.nama }}</a>
+                                <br><small style="color:var(--muted); font-family:monospace;">{{ d.barang.kode }}</small>
+                            </td>
+                            <td>{{ d.jumlah }}</td>
+                            <td>Rp {{ d.harga_satuan|floatformat:0 }}</td>
+                            <td style="font-weight:600;">Rp {{ d.subtotal|floatformat:0 }}</td>
+                            <td style="font-size:0.83rem;">{{ d.kondisi_keluar|default:"-" }}</td>
+                            <td style="font-size:0.83rem;">{{ d.kondisi_kembali|default:"-" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3" class="text-end" style="font-weight:600;">Total:</td>
+                            <td style="font-weight:700; color:var(--gold-dark); font-family:'Cormorant Garamond',serif; font-size:1.1rem;">Rp {{ transaksi.total_harga|floatformat:0 }}</td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+        {% if transaksi.catatan %}
+        <div class="card mt-3 p-3">
+            <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); margin-bottom:6px;">Catatan</div>
+            {{ transaksi.catatan }}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block auth_content %}
+<div style="min-height:100vh; background: var(--deep); display:flex; align-items:center; justify-content:center; background-image: radial-gradient(ellipse at 30% 40%, rgba(201,168,76,0.08) 0%, transparent 60%);">
+    <div style="width:100%; max-width:400px; padding:20px;">
+        <div style="text-align:center; margin-bottom:32px;">
+            <div style="font-family:'Cormorant Garamond',serif; font-size:2.2rem; color:var(--gold); font-weight:700; letter-spacing:0.03em;">✦ Linda Salon</div>
+            <div style="color:var(--muted); font-size:0.8rem; letter-spacing:0.15em; text-transform:uppercase; margin-top:6px;">Sistem Manajemen Sewa Pernikahan</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(201,168,76,0.2); border-radius:16px; padding:32px;">
+            <h5 style="color:rgba(255,255,255,0.85); font-family:'Cormorant Garamond',serif; font-size:1.4rem; margin-bottom:24px; font-weight:600;">Masuk ke Sistem</h5>
+            {% if messages %}
+                {% for msg in messages %}
+                <div class="alert alert-danger" style="border-radius:8px; font-size:0.85rem;">{{ msg }}</div>
+                {% endfor %}
+            {% endif %}
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label" style="color:rgba(255,255,255,0.6); font-size:0.8rem;">Username</label>
+                    <input type="text" name="username" class="form-control" placeholder="Masukkan username"
+                        style="background:rgba(255,255,255,0.05); border-color:rgba(201,168,76,0.3); color:white;"
+                        required>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label" style="color:rgba(255,255,255,0.6); font-size:0.8rem;">Password</label>
+                    <input type="password" name="password" class="form-control" placeholder="Masukkan password"
+                        style="background:rgba(255,255,255,0.05); border-color:rgba(201,168,76,0.3); color:white;"
+                        required>
+                </div>
+                <button type="submit" class="btn btn-gold w-100" style="padding:10px; font-size:0.93rem;">
+                    Masuk <i class="bi bi-arrow-right-short"></i>
+                </button>
+            </form>
+        </div>
+        <div style="text-align:center; margin-top:20px; color:var(--muted); font-size:0.75rem;">
+            ✦ &nbsp; Hubungi admin untuk mendapatkan akun &nbsp; ✦
+        </div>
+    </div>
+</div>
+{% endblock %}

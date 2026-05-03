@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}Data Barang{% endblock %}
+{% block page_title %}Data Barang{% endblock %}
+{% block topbar_actions %}
+<a href="{% url 'barang_create' %}" class="btn btn-gold btn-sm"><i class="bi bi-plus-lg me-1"></i> Tambah Barang</a>
+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <form method="get" class="d-flex gap-2 flex-wrap">
+            <input type="text" name="q" value="{{ q }}" placeholder="Cari nama / kode..." class="form-control" style="max-width:220px;">
+            <select name="kategori" class="form-select" style="max-width:180px;">
+                <option value="">Semua Kategori</option>
+                {% for k in kategori_list %}
+                <option value="{{ k.id }}" {% if selected_kategori == k.id|stringformat:"s" %}selected{% endif %}>{{ k.nama }}</option>
+                {% endfor %}
+            </select>
+            <select name="kondisi" class="form-select" style="max-width:180px;">
+                <option value="">Semua Kondisi</option>
+                <option value="baik" {% if selected_kondisi == "baik" %}selected{% endif %}>Baik</option>
+                <option value="rusak_ringan" {% if selected_kondisi == "rusak_ringan" %}selected{% endif %}>Rusak Ringan</option>
+                <option value="rusak_berat" {% if selected_kondisi == "rusak_berat" %}selected{% endif %}>Rusak Berat</option>
+            </select>
+            <button type="submit" class="btn btn-gold btn-sm">Filter</button>
+            <a href="{% url 'barang_list' %}" class="btn btn-outline-gold btn-sm">Reset</a>
+        </form>
+    </div>
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>Kode</th><th>Nama Barang</th><th>Kategori</th>
+                    <th>Stok Total</th><th>Tersedia</th><th>Disewa</th>
+                    <th>Harga Sewa</th><th>Kondisi</th><th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in barang_list %}
+                <tr>
+                    <td style="font-family:monospace; font-size:0.82rem; color:var(--muted);">{{ b.kode }}</td>
+                    <td><a href="{% url 'barang_detail' b.pk %}" style="color:var(--text); text-decoration:none; font-weight:500;">{{ b.nama }}</a></td>
+                    <td>{{ b.kategori.nama|default:"-" }}</td>
+                    <td class="text-center">{{ b.stok_total }}</td>
+                    <td class="text-center">
+                        <span style="color:{% if b.stok_tersedia == 0 %}#B94040{% else %}#20948A{% endif %}; font-weight:600;">{{ b.stok_tersedia }}</span>
+                    </td>
+                    <td class="text-center">{{ b.stok_disewa }}</td>
+                    <td>Rp {{ b.harga_sewa|floatformat:0 }}</td>
+                    <td>
+                        {% if b.kondisi == 'baik' %}<span class="badge-baik">Baik</span>
+                        {% else %}<span class="badge-rusak">{{ b.get_kondisi_display }}</span>{% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'barang_edit' b.pk %}" class="btn btn-sm btn-outline-gold me-1">Edit</a>
+                        <a href="{% url 'barang_delete' b.pk %}" class="btn btn-sm" style="background:rgba(220,80,80,0.08); color:#B94040; border:1px solid rgba(220,80,80,0.2); border-radius:8px;">Hapus</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="9" class="text-center py-4" style="color:var(--muted);">Tidak ada barang ditemukan</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Barang - Linda Salon</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 12px;
+            color: #1a1a1a;
+            background: white;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px double #C9A84C;
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+        }
+        .header h1 { font-size: 22px; font-weight: 700; color: #1A1208; }
+        .header h2 { font-size: 14px; font-weight: 400; color: #8A7355; margin-top: 4px; }
+        .header .periode { font-size: 13px; font-weight: 600; color: #C9A84C; margin-top: 8px; }
+        .header .generated { font-size: 10px; color: #aaa; margin-top: 4px; }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        thead th {
+            background: #FAF7F0;
+            border: 1px solid #EDE8DC;
+            padding: 8px 10px;
+            text-align: left;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #8A7355;
+            font-weight: 600;
+        }
+        tbody td { border: 1px solid #EDE8DC; padding: 7px 10px; font-size: 11px; }
+        tbody tr:nth-child(even) { background: #FAF7F0; }
+        tfoot td {
+            border: 1px solid #C9A84C;
+            padding: 8px 10px;
+            font-weight: 700;
+            background: #FFFBF0;
+            font-size: 11px;
+        }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .footer {
+            border-top: 1px solid #EDE8DC;
+            padding-top: 12px;
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #aaa;
+        }
+        .no-print {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 999;
+        }
+        .btn-print {
+            background: #C9A84C;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-back {
+            background: #f0f0f0;
+            color: #333;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            body { padding: 0; }
+            @page { margin: 1.5cm; size: A4; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="no-print">
+    <a href="javascript:history.back()" class="btn-back">← Kembali</a>
+    <button class="btn-print" onclick="window.print()">🖨️ Print</button>
+    <button class="btn-print" onclick="window.print()" style="background:#1A1208;">⬇️ Simpan PDF</button>
+</div>
+
+<div class="header">
+    <h1>✦ Linda Salon</h1>
+    <h2>Manajemen Sewa Perlengkapan Pernikahan</h2>
+    <div class="periode">LAPORAN POPULARITAS BARANG</div>
+    <div class="generated">Dicetak: {{ generated_at|date:"d F Y, H:i" }} WIB</div>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th class="text-center">#</th>
+            <th>Kode</th>
+            <th>Nama Barang</th>
+            <th>Kategori</th>
+            <th class="text-right">Total Disewa</th>
+            <th class="text-right">Jml Transaksi</th>
+            <th class="text-right">Total Pendapatan</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in detail_list %}
+        <tr>
+            <td class="text-center">{{ forloop.counter }}</td>
+            <td style="font-family:monospace; font-size:10px; color:#8A7355;">{{ item.barang__kode }}</td>
+            <td><strong>{{ item.barang__nama }}</strong></td>
+            <td>{{ item.barang__kategori__nama|default:"-" }}</td>
+            <td class="text-right">{{ item.total_disewa }}</td>
+            <td class="text-right">{{ item.total_transaksi }}</td>
+            <td class="text-right">Rp {{ item.total_pendapatan|floatformat:0 }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="7" class="text-center" style="padding:20px; color:#aaa;">Belum ada data</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="footer">
+    <div>Linda Salon — Sistem Manajemen Sewa Pernikahan</div>
+    <div>Dicetak: {{ generated_at|date:"d F Y" }}</div>
+</div>
+
+<script>
+if (window.location.search.includes('pdf=1')) {
+    setTimeout(() => window.print(), 500);
+}
+</script>
+</body>
+</html>

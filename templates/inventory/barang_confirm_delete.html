@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Hapus Barang{% endblock %}
+{% block page_title %}Hapus Barang{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card text-center p-4">
+            <i class="bi bi-trash3" style="font-size:2.5rem; color:#B94040; margin-bottom:12px;"></i>
+            <h5 style="font-family:'Cormorant Garamond',serif;">Hapus Barang</h5>
+            <p style="color:var(--muted); font-size:0.9rem;">Yakin ingin menghapus <strong>{{ barang.nama }}</strong>? Tindakan ini tidak dapat dibatalkan.</p>
+            <div class="d-flex gap-2 justify-content-center mt-2">
+                <form method="post">{% csrf_token %}
+                    <button type="submit" class="btn btn-sm" style="background:#B94040; color:white; border-radius:8px; padding:8px 20px;">Hapus</button>
+                </form>
+                <a href="{% url 'barang_list' %}" class="btn btn-outline-gold btn-sm">Batal</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

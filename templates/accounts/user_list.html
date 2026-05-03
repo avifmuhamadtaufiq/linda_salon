@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Kelola Pengguna{% endblock %}
+{% block page_title %}Kelola Pengguna{% endblock %}
+{% block topbar_actions %}
+<a href="{% url 'user_create' %}" class="btn btn-gold btn-sm"><i class="bi bi-plus-lg me-1"></i> Tambah Pengguna</a>
+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead><tr><th>Username</th><th>Nama</th><th>Role</th><th>No. HP</th><th>Bergabung</th><th>Aksi</th></tr></thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td style="font-weight:600;">{{ u.username }}</td>
+                    <td>{{ u.get_full_name|default:"-" }}</td>
+                    <td><span class="badge-{{ u.profile.role }}">{{ u.profile.get_role_display }}</span></td>
+                    <td>{{ u.profile.phone|default:"-" }}</td>
+                    <td>{{ u.date_joined|date:"d M Y" }}</td>
+                    <td>
+                        {% if u != request.user %}
+                        <a href="{% url 'user_delete' u.pk %}" class="btn btn-sm" style="background:rgba(220,80,80,0.08); color:#B94040; border:1px solid rgba(220,80,80,0.2); border-radius:8px;">Hapus</a>
+                        {% else %}
+                        <span style="color:var(--muted); font-size:0.8rem;">Anda</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

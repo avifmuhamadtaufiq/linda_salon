@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Kategori{% endblock %}
+{% block page_title %}Kategori Barang{% endblock %}
+{% block topbar_actions %}
+<a href="{% url 'kategori_create' %}" class="btn btn-gold btn-sm"><i class="bi bi-plus-lg me-1"></i> Tambah Kategori</a>
+{% endblock %}
+{% block content %}
+<div class="row g-3">
+    {% for k in kategori_list %}
+    <div class="col-md-4">
+        <div class="card p-3">
+            <div style="font-family:'Cormorant Garamond',serif; font-size:1.15rem; font-weight:600;">{{ k.nama }}</div>
+            <div style="color:var(--muted); font-size:0.83rem; margin-top:4px;">{{ k.deskripsi|default:"Tidak ada deskripsi" }}</div>
+            <div style="margin-top:8px; font-size:0.8rem; color:var(--gold-dark);">{{ k.barang.count }} jenis barang</div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-4" style="color:var(--muted);">Belum ada kategori. <a href="{% url 'kategori_create' %}" style="color:var(--gold-dark);">Tambah sekarang</a></div>
+    {% endfor %}
+</div>
+{% endblock %}

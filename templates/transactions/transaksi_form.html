@@ -1,0 +1,363 @@
+{% extends 'base.html' %}
+{% block title %}Buat Transaksi Baru{% endblock %}
+{% block page_title %}Buat Transaksi Baru{% endblock %}
+
+{% block content %}
+<form method="post" id="trxForm">
+{% csrf_token %}
+<input type="hidden" name="pelanggan_id" id="pelanggan_id_hidden" value="{{ request.GET.pelanggan_id }}">
+
+<div class="row g-3">
+    <!-- Pelanggan -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Data Pelanggan</span>
+                <a href="{% url 'pelanggan_create' %}?next=transaksi" target="_blank"
+                    class="btn btn-outline-gold btn-sm" style="font-size:0.78rem;">
+                    <i class="bi bi-person-plus me-1"></i> Pelanggan Baru
+                </a>
+            </div>
+            <div class="card-body p-3">
+
+                <!-- Mode toggle -->
+                <div class="d-flex gap-2 mb-3">
+                    <button type="button" class="btn btn-gold btn-sm" id="btnPilihLama" onclick="toggleMode('lama')">
+                        <i class="bi bi-person-check me-1"></i> Pilih Pelanggan Lama
+                    </button>
+                    <button type="button" class="btn btn-outline-gold btn-sm" id="btnBuatBaru" onclick="toggleMode('baru')">
+                        <i class="bi bi-person-plus me-1"></i> Pelanggan Baru
+                    </button>
+                </div>
+
+                <!-- Pilih pelanggan lama -->
+                <div id="modeLama">
+                    <label class="form-label">Cari Pelanggan</label>
+                    <div style="position:relative;">
+                        <input type="text" id="searchPelanggan" class="form-control"
+                            placeholder="Ketik nama atau no. HP..."
+                            autocomplete="off">
+                        <div id="searchResults" style="
+                            position:absolute; top:100%; left:0; right:0; z-index:100;
+                            background:white; border:1px solid #DDD8CC; border-radius:8px;
+                            box-shadow:0 4px 12px rgba(0,0,0,0.1); display:none; max-height:220px; overflow-y:auto;">
+                        </div>
+                    </div>
+                    <div id="pelangganTerpilih" style="display:none; margin-top:10px;
+                        background:#FAF7F0; border:1px solid #EDE8DC; border-radius:10px; padding:12px;">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div style="font-weight:700; font-size:0.95rem;" id="pilihNama"></div>
+                                <div style="font-size:0.83rem; color:var(--muted);" id="pilihHp"></div>
+                                <div style="font-size:0.8rem; color:var(--muted);" id="pilihAlamat"></div>
+                            </div>
+                            <button type="button" onclick="clearPelanggan()"
+                                style="background:none; border:none; color:#B94040; font-size:1.1rem; cursor:pointer;">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div style="margin-top:8px;">
+                        <select id="selectPelanggan" class="form-select" onchange="pilihDariSelect(this)">
+                            <option value="">-- Atau pilih dari daftar --</option>
+                            {% for p in pelanggan_list %}
+                            <option value="{{ p.pk }}" data-nama="{{ p.nama }}" data-hp="{{ p.hp }}" data-alamat="{{ p.alamat }}"
+                                {% if request.GET.pelanggan_id == p.pk|stringformat:"s" %}selected{% endif %}>
+                                {{ p.nama }} — {{ p.hp }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Input pelanggan baru -->
+                <div id="modeBaru" style="display:none;">
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <label class="form-label">Nama Pelanggan *</label>
+                            <input type="text" name="pelanggan_nama" id="inp_nama" class="form-control"
+                                placeholder="Nama lengkap">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">No. HP *</label>
+                            <input type="text" name="pelanggan_hp" id="inp_hp" class="form-control"
+                                placeholder="08xx-xxxx-xxxx">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Alamat</label>
+                            <textarea name="pelanggan_alamat" id="inp_alamat" class="form-control"
+                                rows="2" placeholder="Alamat lengkap"></textarea>
+                        </div>
+                    </div>
+                    <div style="margin-top:8px; font-size:0.8rem; color:var(--muted);">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Pelanggan baru akan otomatis tersimpan ke data pelanggan.
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Jadwal & Pembayaran -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Jadwal & Pembayaran</div>
+            <div class="card-body p-3">
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label">Tanggal Sewa *</label>
+                        <input type="date" name="tanggal_sewa" class="form-control" value="{{ today }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Tanggal Kembali *</label>
+                        <input type="date" name="tanggal_kembali" class="form-control" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Nama Acara</label>
+                        <input type="text" name="acara" class="form-control"
+                            placeholder="Pernikahan, Siraman, Lamaran, dll">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Uang Muka / DP (Rp)</label>
+                        <input type="number" name="uang_muka" class="form-control" value="0" min="0">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Catatan</label>
+                        <textarea name="catatan" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barang -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <span>Pilih Barang yang Disewa</span>
+                <button type="button" class="btn btn-outline-gold btn-sm" onclick="addBarangRow()">
+                    <i class="bi bi-plus-lg me-1"></i> Tambah Baris
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table mb-0" id="barangTable">
+                    <thead>
+                        <tr>
+                            <th>Barang</th>
+                            <th style="width:100px;">Jumlah</th>
+                            <th style="width:150px;">Harga Satuan</th>
+                            <th style="width:150px;">Subtotal</th>
+                            <th style="width:150px;">Kondisi Keluar</th>
+                            <th style="width:50px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="barangRows"></tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3" class="text-end"
+                                style="font-weight:600; font-size:0.9rem; padding:12px 14px;">Total:</td>
+                            <td style="font-weight:700; color:var(--gold-dark);
+                                font-family:'Cormorant Garamond',serif; font-size:1.2rem;
+                                padding:12px 14px;" id="grandTotal">Rp 0</td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 d-flex gap-2 justify-content-end">
+        <a href="{% url 'transaksi_list' %}" class="btn btn-outline-gold">Batal</a>
+        <button type="submit" class="btn btn-gold px-4">
+            <i class="bi bi-check-lg me-1"></i> Simpan Transaksi
+        </button>
+    </div>
+</div>
+</form>
+
+<script>
+const barangData = [
+    {% for b in barang_list %}
+    { id: {{ b.pk }}, nama: "{{ b.nama }}", kode: "{{ b.kode }}", harga: {{ b.harga_sewa }}, stok: {{ b.stok_tersedia }} },
+    {% endfor %}
+];
+
+// =====================
+// MODE TOGGLE
+// =====================
+let currentMode = 'lama';
+
+function toggleMode(mode) {
+    currentMode = mode;
+    if (mode === 'lama') {
+        document.getElementById('modeLama').style.display = 'block';
+        document.getElementById('modeBaru').style.display = 'none';
+        document.getElementById('btnPilihLama').className = 'btn btn-gold btn-sm';
+        document.getElementById('btnBuatBaru').className = 'btn btn-outline-gold btn-sm';
+        document.getElementById('pelanggan_id_hidden').value = '';
+        // kosongkan input baru
+        document.getElementById('inp_nama').removeAttribute('required');
+        document.getElementById('inp_hp').removeAttribute('required');
+    } else {
+        document.getElementById('modeLama').style.display = 'none';
+        document.getElementById('modeBaru').style.display = 'block';
+        document.getElementById('btnPilihLama').className = 'btn btn-outline-gold btn-sm';
+        document.getElementById('btnBuatBaru').className = 'btn btn-gold btn-sm';
+        document.getElementById('pelanggan_id_hidden').value = '';
+        document.getElementById('inp_nama').setAttribute('required', 'required');
+        document.getElementById('inp_hp').setAttribute('required', 'required');
+        clearPelanggan();
+    }
+}
+
+// =====================
+// PILIH DARI SELECT
+// =====================
+function pilihDariSelect(sel) {
+    const opt = sel.selectedOptions[0];
+    if (!opt.value) return clearPelanggan();
+    const nama = opt.dataset.nama;
+    const hp = opt.dataset.hp;
+    const alamat = opt.dataset.alamat;
+    setPelanggan(opt.value, nama, hp, alamat);
+}
+
+function setPelanggan(id, nama, hp, alamat) {
+    document.getElementById('pelanggan_id_hidden').value = id;
+    document.getElementById('pilihNama').textContent = nama;
+    document.getElementById('pilihHp').textContent = hp;
+    document.getElementById('pilihAlamat').textContent = alamat || '';
+    document.getElementById('pelangganTerpilih').style.display = 'block';
+    document.getElementById('searchPelanggan').value = nama;
+    document.getElementById('searchResults').style.display = 'none';
+}
+
+function clearPelanggan() {
+    document.getElementById('pelanggan_id_hidden').value = '';
+    document.getElementById('pilihNama').textContent = '';
+    document.getElementById('pilihHp').textContent = '';
+    document.getElementById('pilihAlamat').textContent = '';
+    document.getElementById('pelangganTerpilih').style.display = 'none';
+    document.getElementById('searchPelanggan').value = '';
+    document.getElementById('selectPelanggan').value = '';
+}
+
+// =====================
+// SEARCH AUTOCOMPLETE
+// =====================
+let searchTimeout;
+document.getElementById('searchPelanggan').addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    const q = this.value.trim();
+    if (q.length < 2) {
+        document.getElementById('searchResults').style.display = 'none';
+        return;
+    }
+    searchTimeout = setTimeout(() => {
+        fetch(`{% url 'pelanggan_search_api' %}?q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(data => {
+                const box = document.getElementById('searchResults');
+                if (!data.results.length) {
+                    box.innerHTML = '<div style="padding:12px; color:var(--muted); font-size:0.85rem;">Tidak ditemukan</div>';
+                } else {
+                    box.innerHTML = data.results.map(p => `
+                        <div onclick="setPelanggan(${p.id},'${p.nama.replace(/'/g,"\\'")}','${p.hp}','${(p.alamat||'').replace(/'/g,"\\'")}' )"
+                            style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #F0EBE0;"
+                            onmouseover="this.style.background='#FAF7F0'" onmouseout="this.style.background='white'">
+                            <div style="font-weight:600; font-size:0.88rem;">${p.nama}</div>
+                            <div style="font-size:0.78rem; color:var(--muted);">${p.hp}</div>
+                        </div>`).join('');
+                }
+                box.style.display = 'block';
+            });
+    }, 300);
+});
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#searchPelanggan') && !e.target.closest('#searchResults')) {
+        document.getElementById('searchResults').style.display = 'none';
+    }
+});
+
+// =====================
+// BARANG ROWS
+// =====================
+function formatRp(n) {
+    return 'Rp ' + Math.round(n).toLocaleString('id-ID');
+}
+
+function updateTotal() {
+    let total = 0;
+    document.querySelectorAll('.row-subtotal').forEach(el => {
+        total += parseFloat(el.dataset.val || 0);
+    });
+    document.getElementById('grandTotal').textContent = formatRp(total);
+}
+
+function addBarangRow() {
+    const tbody = document.getElementById('barangRows');
+    const options = barangData.map(b =>
+        `<option value="${b.id}" data-harga="${b.harga}" data-stok="${b.stok}">[${b.kode}] ${b.nama} (Stok: ${b.stok})</option>`
+    ).join('');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td>
+            <select name="barang_id" class="form-select form-select-sm barang-select" required onchange="onBarangChange(this)">
+                <option value="">-- Pilih Barang --</option>
+                ${options}
+            </select>
+        </td>
+        <td><input type="number" name="jumlah" class="form-control form-control-sm jumlah-input"
+            value="1" min="1" onchange="calcRow(this)" oninput="calcRow(this)"></td>
+        <td class="harga-display" style="font-size:0.87rem; color:var(--muted); padding:11px 14px;">-</td>
+        <td class="row-subtotal" data-val="0"
+            style="font-weight:600; color:var(--gold-dark); padding:11px 14px;">-</td>
+        <td><input type="text" name="kondisi_keluar_" class="form-control form-control-sm" value="Baik"></td>
+        <td><button type="button" onclick="this.closest('tr').remove(); updateTotal();"
+            style="color:#B94040; border:none; background:none; font-size:1.1rem; cursor:pointer; padding:6px;">
+            <i class="bi bi-x-circle"></i></button></td>`;
+    tbody.appendChild(tr);
+}
+
+function onBarangChange(sel) {
+    const opt = sel.selectedOptions[0];
+    if (!opt.value) return;
+    const harga = parseFloat(opt.dataset.harga);
+    const stok = parseInt(opt.dataset.stok);
+    const tr = sel.closest('tr');
+    tr.querySelector('.harga-display').textContent = formatRp(harga);
+    const jmlInput = tr.querySelector('.jumlah-input');
+    jmlInput.max = stok;
+    tr.querySelector('input[name^="kondisi_keluar_"]').name = `kondisi_keluar_${opt.value}`;
+    calcRow(jmlInput);
+}
+
+function calcRow(input) {
+    const tr = input.closest('tr');
+    const sel = tr.querySelector('.barang-select');
+    const opt = sel.selectedOptions[0];
+    if (!opt || !opt.value) return;
+    const harga = parseFloat(opt.dataset.harga);
+    const jml = parseFloat(input.value) || 0;
+    const subtotal = harga * jml;
+    const cell = tr.querySelector('.row-subtotal');
+    cell.textContent = formatRp(subtotal);
+    cell.dataset.val = subtotal;
+    updateTotal();
+}
+
+// Init: auto pilih kalau ada pelanggan_id dari URL
+window.addEventListener('DOMContentLoaded', () => {
+    addBarangRow();
+    const urlPelangganId = "{{ request.GET.pelanggan_id }}";
+    if (urlPelangganId) {
+        const sel = document.getElementById('selectPelanggan');
+        sel.value = urlPelangganId;
+        if (sel.value) pilihDariSelect(sel);
+    }
+});
+</script>
+{% endblock %}

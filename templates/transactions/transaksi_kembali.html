@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Proses Pengembalian{% endblock %}
+{% block page_title %}Proses Pengembalian Barang{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card mb-3">
+            <div class="card-header" style="color:var(--gold-dark);">
+                ✦ {{ transaksi.no_transaksi }} — {{ transaksi.pelanggan_nama }}
+            </div>
+            <div class="card-body p-3">
+                <div class="row g-2 mb-3" style="font-size:0.87rem;">
+                    <div class="col-md-4"><span style="color:var(--muted);">Tgl Sewa:</span> {{ transaksi.tanggal_sewa|date:"d M Y" }}</div>
+                    <div class="col-md-4"><span style="color:var(--muted);">Jatuh Tempo:</span> {{ transaksi.tanggal_kembali|date:"d M Y" }}</div>
+                    <div class="col-md-4"><span style="color:var(--muted);">Total:</span> <strong>Rp {{ transaksi.total_harga|floatformat:0 }}</strong></div>
+                </div>
+            </div>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <div class="card">
+                <div class="card-header">Periksa Kondisi Barang Dikembalikan</div>
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead>
+                            <tr><th>Barang</th><th>Jumlah</th><th>Kondisi Keluar</th><th>Kondisi Kembali</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for d in detail %}
+                            <tr>
+                                <td><strong>{{ d.barang.nama }}</strong></td>
+                                <td>{{ d.jumlah }}</td>
+                                <td style="color:var(--muted); font-size:0.83rem;">{{ d.kondisi_keluar|default:"Baik" }}</td>
+                                <td>
+                                    <input type="text" name="kondisi_kembali_{{ d.pk }}" class="form-control form-control-sm" value="Baik" placeholder="Kondisi saat kembali">
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="p-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-gold">
+                        <i class="bi bi-check2-circle me-1"></i> Konfirmasi Pengembalian
+                    </button>
+                    <a href="{% url 'transaksi_detail' transaksi.pk %}" class="btn btn-outline-gold">Batal</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Data Pelanggan{% endblock %}
+{% block page_title %}Data Pelanggan{% endblock %}
+{% block topbar_actions %}
+<a href="{% url 'pelanggan_create' %}" class="btn btn-gold btn-sm">
+    <i class="bi bi-person-plus me-1"></i> Tambah Pelanggan
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <form method="get" class="d-flex gap-2">
+            <input type="text" name="q" value="{{ q }}" placeholder="Cari nama / no. HP..."
+                class="form-control" style="max-width:280px;">
+            <button type="submit" class="btn btn-gold btn-sm">Cari</button>
+            {% if q %}<a href="{% url 'pelanggan_list' %}" class="btn btn-outline-gold btn-sm">Reset</a>{% endif %}
+        </form>
+    </div>
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>Nama Pelanggan</th>
+                    <th>No. HP</th>
+                    <th>Alamat</th>
+                    <th>Email</th>
+                    <th class="text-center">Total Transaksi</th>
+                    <th>Terdaftar</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in pelanggan_list %}
+                <tr>
+                    <td>
+                        <a href="{% url 'pelanggan_detail' p.pk %}"
+                            style="color:var(--text); text-decoration:none; font-weight:600;">
+                            {{ p.nama }}
+                        </a>
+                    </td>
+                    <td>{{ p.hp }}</td>
+                    <td style="font-size:0.83rem; color:var(--muted); max-width:200px;">
+                        {{ p.alamat|truncatechars:50|default:"-" }}
+                    </td>
+                    <td style="font-size:0.83rem;">{{ p.email|default:"-" }}</td>
+                    <td class="text-center">
+                        <span style="background:rgba(201,168,76,0.1); color:var(--gold-dark);
+                            padding:3px 10px; border-radius:20px; font-weight:600; font-size:0.83rem;">
+                            {{ p.total_transaksi }}x
+                        </span>
+                    </td>
+                    <td style="font-size:0.83rem; color:var(--muted);">{{ p.created_at|date:"d M Y" }}</td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a href="{% url 'transaksi_create' %}?pelanggan_id={{ p.pk }}"
+                                class="btn btn-sm btn-gold" title="Buat transaksi untuk pelanggan ini">
+                                <i class="bi bi-plus-circle"></i>
+                            </a>
+                            <a href="{% url 'pelanggan_edit' p.pk %}" class="btn btn-sm btn-outline-gold">
+                                Edit
+                            </a>
+                            <a href="{% url 'pelanggan_delete' p.pk %}" class="btn btn-sm"
+                                style="background:rgba(220,80,80,0.08); color:#B94040;
+                                border:1px solid rgba(220,80,80,0.2); border-radius:8px;">
+                                Hapus
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center py-5" style="color:var(--muted);">
+                        <i class="bi bi-people" style="font-size:2rem; display:block; margin-bottom:8px; opacity:0.3;"></i>
+                        Belum ada data pelanggan.<br>
+                        <a href="{% url 'pelanggan_create' %}" style="color:var(--gold-dark);">Tambah pelanggan pertama</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

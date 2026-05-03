@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% block title %}{{ pelanggan.nama }}{% endblock %}
+{% block page_title %}Detail Pelanggan{% endblock %}
+{% block topbar_actions %}
+<a href="{% url 'transaksi_create' %}?pelanggan_id={{ pelanggan.pk }}" class="btn btn-gold btn-sm">
+    <i class="bi bi-plus-circle me-1"></i> Buat Transaksi
+</a>
+<a href="{% url 'pelanggan_edit' pelanggan.pk %}" class="btn btn-outline-gold btn-sm">Edit</a>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card p-4">
+            <div style="width:60px; height:60px; border-radius:50%; background:rgba(201,168,76,0.15);
+                display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+                <span style="font-family:'Cormorant Garamond',serif; font-size:1.8rem;
+                    color:var(--gold-dark); font-weight:700;">
+                    {{ pelanggan.nama|first|upper }}
+                </span>
+            </div>
+            <h5 style="font-family:'Cormorant Garamond',serif; font-size:1.3rem; font-weight:700;">
+                {{ pelanggan.nama }}
+            </h5>
+            <hr style="border-color:#EDE8DC; margin:12px 0;">
+            <div class="mb-2">
+                <div style="font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em;">No. HP</div>
+                <div style="font-weight:500;">{{ pelanggan.hp }}</div>
+            </div>
+            {% if pelanggan.email %}
+            <div class="mb-2">
+                <div style="font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em;">Email</div>
+                <div>{{ pelanggan.email }}</div>
+            </div>
+            {% endif %}
+            {% if pelanggan.alamat %}
+            <div class="mb-2">
+                <div style="font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em;">Alamat</div>
+                <div style="font-size:0.88rem;">{{ pelanggan.alamat }}</div>
+            </div>
+            {% endif %}
+            {% if pelanggan.catatan %}
+            <div class="mb-2">
+                <div style="font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em;">Catatan</div>
+                <div style="font-size:0.85rem; color:var(--muted);">{{ pelanggan.catatan }}</div>
+            </div>
+            {% endif %}
+            <hr style="border-color:#EDE8DC; margin:12px 0;">
+            <div style="text-align:center;">
+                <div style="font-family:'Cormorant Garamond',serif; font-size:2rem; font-weight:700; color:var(--gold-dark);">
+                    {{ pelanggan.total_transaksi }}
+                </div>
+                <div style="font-size:0.78rem; color:var(--muted);">Total Transaksi</div>
+            </div>
+            <div style="font-size:0.75rem; color:var(--muted); text-align:center; margin-top:12px;">
+                Terdaftar {{ pelanggan.created_at|date:"d M Y" }}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Riwayat Transaksi</span>
+                <a href="{% url 'transaksi_create' %}?pelanggan_id={{ pelanggan.pk }}"
+                    class="btn btn-outline-gold btn-sm">
+                    <i class="bi bi-plus-lg me-1"></i> Transaksi Baru
+                </a>
+            </div>
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>No. Transaksi</th>
+                            <th>Acara</th>
+                            <th>Tgl Sewa</th>
+                            <th>Tgl Kembali</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for trx in transaksi %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'transaksi_detail' trx.pk %}"
+                                    style="color:var(--gold-dark); text-decoration:none; font-weight:600;">
+                                    {{ trx.no_transaksi }}
+                                </a>
+                            </td>
+                            <td style="font-size:0.83rem;">{{ trx.acara|default:"-" }}</td>
+                            <td>{{ trx.tanggal_sewa|date:"d M Y" }}</td>
+                            <td>{{ trx.tanggal_kembali|date:"d M Y" }}</td>
+                            <td style="font-weight:600;">Rp {{ trx.total_harga|floatformat:0 }}</td>
+                            <td><span class="badge-{{ trx.status }}">{{ trx.get_status_display }}</span></td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4" style="color:var(--muted);">
+                                Belum ada transaksi
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

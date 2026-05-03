@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Daftar Transaksi{% endblock %}
+{% block page_title %}Daftar Transaksi{% endblock %}
+{% block topbar_actions %}
+<a href="{% url 'transaksi_create' %}" class="btn btn-gold btn-sm"><i class="bi bi-plus-lg me-1"></i> Buat Transaksi</a>
+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <form method="get" class="d-flex gap-2 flex-wrap">
+            <input type="text" name="q" value="{{ q }}" placeholder="Cari no. transaksi / pelanggan..." class="form-control" style="max-width:240px;">
+            <select name="status" class="form-select" style="max-width:180px;">
+                <option value="">Semua Status</option>
+                <option value="aktif" {% if selected_status == "aktif" %}selected{% endif %}>Aktif</option>
+                <option value="selesai" {% if selected_status == "selesai" %}selected{% endif %}>Selesai</option>
+                <option value="batal" {% if selected_status == "batal" %}selected{% endif %}>Batal</option>
+            </select>
+            <input type="date" name="tanggal" value="{{ tanggal }}" class="form-control" style="max-width:160px;">
+            <button type="submit" class="btn btn-gold btn-sm">Filter</button>
+            <a href="{% url 'transaksi_list' %}" class="btn btn-outline-gold btn-sm">Reset</a>
+        </form>
+    </div>
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead>
+                <tr><th>No. Transaksi</th><th>Pelanggan</th><th>Acara</th><th>Tgl Sewa</th><th>Tgl Kembali</th><th>Total</th><th>Status</th><th>Aksi</th></tr>
+            </thead>
+            <tbody>
+                {% for trx in transaksi_list %}
+                <tr>
+                    <td><a href="{% url 'transaksi_detail' trx.pk %}" style="color:var(--gold-dark); text-decoration:none; font-weight:600;">{{ trx.no_transaksi }}</a></td>
+                    <td>
+                        <div>{{ trx.pelanggan_nama }}</div>
+                        <small style="color:var(--muted);">{{ trx.pelanggan_hp }}</small>
+                    </td>
+                    <td style="font-size:0.83rem; color:var(--muted);">{{ trx.acara|default:"-" }}</td>
+                    <td>{{ trx.tanggal_sewa|date:"d M Y" }}</td>
+                    <td>{{ trx.tanggal_kembali|date:"d M Y" }}</td>
+                    <td style="font-weight:600;">Rp {{ trx.total_harga|floatformat:0 }}</td>
+                    <td><span class="badge-{{ trx.status }}">{{ trx.get_status_display }}</span></td>
+                    <td>
+                        <a href="{% url 'transaksi_detail' trx.pk %}" class="btn btn-sm btn-outline-gold">Detail</a>
+                        {% if trx.status == 'aktif' %}
+                        <a href="{% url 'transaksi_kembali' trx.pk %}" class="btn btn-sm ms-1" style="background:rgba(32,148,137,0.1); color:#20948A; border:1px solid rgba(32,148,137,0.3); border-radius:8px;">Kembalikan</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="text-center py-4" style="color:var(--muted);">Tidak ada transaksi ditemukan</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

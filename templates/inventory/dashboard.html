@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block topbar_actions %}
+<a href="{% url 'transaksi_create' %}" class="btn btn-gold btn-sm">
+    <i class="bi bi-plus-lg me-1"></i> Transaksi Baru
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-gold"><i class="bi bi-box-seam"></i></div>
+            <div>
+                <div class="stat-value">{{ total_barang }}</div>
+                <div class="stat-label">Jenis Barang</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-teal"><i class="bi bi-check2-circle"></i></div>
+            <div>
+                <div class="stat-value">{{ total_tersedia }}</div>
+                <div class="stat-label">Stok Tersedia</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-rose"><i class="bi bi-arrow-up-right-circle"></i></div>
+            <div>
+                <div class="stat-value">{{ total_disewa }}</div>
+                <div class="stat-label">Sedang Disewa</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-blue"><i class="bi bi-receipt"></i></div>
+            <div>
+                <div class="stat-value">{{ transaksi_aktif }}</div>
+                <div class="stat-label">Transaksi Aktif</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Today summary -->
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="alert-gold p-3 rounded-3 d-flex gap-3 align-items-center">
+            <i class="bi bi-calendar-check" style="font-size:1.4rem; color:var(--gold);"></i>
+            <div>
+                <div style="font-weight:600; font-size:0.9rem;">Hari Ini: <span style="color:var(--gold-dark);">{{ transaksi_hari_ini }} Transaksi Masuk</span></div>
+                <div style="font-size:0.8rem; color:var(--muted);">{{ pengembalian_hari_ini }} barang dijadwalkan kembali hari ini</div>
+            </div>
+            <a href="{% url 'jadwal' %}" class="btn btn-outline-gold btn-sm ms-auto">Lihat Jadwal</a>
+        </div>
+    </div>
+    {% if barang_low_stock %}
+    <div class="col-md-6">
+        <div style="background:rgba(220,80,80,0.06); border:1px solid rgba(220,80,80,0.2); border-radius:12px;" class="p-3 d-flex gap-3 align-items-center">
+            <i class="bi bi-exclamation-triangle" style="font-size:1.4rem; color:#B94040;"></i>
+            <div>
+                <div style="font-weight:600; font-size:0.9rem; color:#B94040;">{{ barang_low_stock.count }} Barang Habis Stok</div>
+                <div style="font-size:0.8rem; color:var(--muted);">Semua unit sedang disewa</div>
+            </div>
+            <a href="{% url 'barang_list' %}" class="btn btn-sm ms-auto" style="background:rgba(220,80,80,0.1); color:#B94040; border:1px solid rgba(220,80,80,0.3);">Cek Barang</a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Recent Transactions -->
+<div class="row g-3">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <span>Transaksi Terbaru</span>
+                <a href="{% url 'transaksi_list' %}" class="btn btn-outline-gold btn-sm">Lihat Semua</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>No. Transaksi</th>
+                            <th>Pelanggan</th>
+                            <th>Tgl Sewa</th>
+                            <th>Tgl Kembali</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for trx in transaksi_terbaru %}
+                        <tr>
+                            <td><a href="{% url 'transaksi_detail' trx.pk %}" style="color:var(--gold-dark); text-decoration:none; font-weight:500;">{{ trx.no_transaksi }}</a></td>
+                            <td>{{ trx.pelanggan_nama }}</td>
+                            <td>{{ trx.tanggal_sewa|date:"d M Y" }}</td>
+                            <td>{{ trx.tanggal_kembali|date:"d M Y" }}</td>
+                            <td><span class="badge-{{ trx.status }}">{{ trx.get_status_display }}</span></td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center py-4" style="color:var(--muted);">Belum ada transaksi</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header">Menu Cepat</div>
+            <div class="card-body p-3">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'transaksi_create' %}" class="btn btn-gold">
+                        <i class="bi bi-plus-circle me-2"></i>Buat Transaksi Baru
+                    </a>
+                    <a href="{% url 'barang_create' %}" class="btn btn-outline-gold">
+                        <i class="bi bi-plus-square me-2"></i>Tambah Barang
+                    </a>
+                    <a href="{% url 'jadwal' %}" class="btn btn-outline-gold">
+                        <i class="bi bi-calendar3 me-2"></i>Lihat Jadwal
+                    </a>
+                    <a href="{% url 'laporan_keuangan' %}" class="btn btn-outline-gold">
+                        <i class="bi bi-graph-up me-2"></i>Laporan Keuangan
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

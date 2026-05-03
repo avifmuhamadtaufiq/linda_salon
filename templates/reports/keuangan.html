@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block title %}Laporan Keuangan{% endblock %}
+{% block page_title %}Laporan Keuangan{% endblock %}
+
+{% block topbar_actions %}
+<a href="?bulan={{ bulan }}&tahun={{ tahun }}&print=1" target="_blank" class="btn btn-outline-gold btn-sm">
+    <i class="bi bi-printer me-1"></i> Print
+</a>
+<a href="?bulan={{ bulan }}&tahun={{ tahun }}&pdf=1" target="_blank" class="btn btn-gold btn-sm">
+    <i class="bi bi-file-earmark-pdf me-1"></i> Simpan PDF
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card mb-3">
+    <div class="card-header">
+        <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
+            <label class="form-label mb-0" style="font-size:0.85rem;">Periode:</label>
+            <select name="bulan" class="form-select" style="max-width:140px;">
+                {% for m_num, m_name in months %}
+                <option value="{{ m_num }}" {% if m_num == bulan %}selected{% endif %}>{{ m_name }}</option>
+                {% endfor %}
+            </select>
+            <select name="tahun" class="form-select" style="max-width:100px;">
+                {% for y in years %}
+                <option value="{{ y }}" {% if y == tahun %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-gold btn-sm">Tampilkan</button>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-gold"><i class="bi bi-cash-stack"></i></div>
+            <div>
+                <div class="stat-value" style="font-size:1.2rem;">Rp {{ total_omzet|floatformat:0 }}</div>
+                <div class="stat-label">Total Omzet</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-teal"><i class="bi bi-wallet2"></i></div>
+            <div>
+                <div class="stat-value" style="font-size:1.2rem;">Rp {{ total_dp|floatformat:0 }}</div>
+                <div class="stat-label">Total DP Masuk</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-rose"><i class="bi bi-hourglass-split"></i></div>
+            <div>
+                <div class="stat-value" style="font-size:1.2rem;">Rp {{ total_sisa|floatformat:0 }}</div>
+                <div class="stat-label">Total Sisa Bayar</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-blue"><i class="bi bi-receipt"></i></div>
+            <div>
+                <div class="stat-value">{{ total_transaksi }}</div>
+                <div class="stat-label">Transaksi Selesai</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span>Rincian Transaksi — {{ bulan_nama }} {{ tahun }}</span>
+        <div class="d-flex gap-2">
+            <a href="?bulan={{ bulan }}&tahun={{ tahun }}&print=1" target="_blank" class="btn btn-outline-gold btn-sm">
+                <i class="bi bi-printer me-1"></i> Print
+            </a>
+            <a href="?bulan={{ bulan }}&tahun={{ tahun }}&pdf=1" target="_blank" class="btn btn-gold btn-sm">
+                <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+            </a>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>#</th><th>No. Transaksi</th><th>Pelanggan</th>
+                    <th>Acara</th><th>Tgl Kembali</th>
+                    <th>Total</th><th>DP</th><th>Sisa</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for trx in transaksi_list %}
+                <tr>
+                    <td style="color:var(--muted); font-size:0.83rem;">{{ forloop.counter }}</td>
+                    <td><a href="{% url 'transaksi_detail' trx.pk %}" style="color:var(--gold-dark); text-decoration:none; font-weight:600;">{{ trx.no_transaksi }}</a></td>
+                    <td>{{ trx.pelanggan_nama }}</td>
+                    <td style="font-size:0.83rem; color:var(--muted);">{{ trx.acara|default:"-" }}</td>
+                    <td>{{ trx.tanggal_kembali_aktual|date:"d M Y" }}</td>
+                    <td style="font-weight:600;">Rp {{ trx.total_harga|floatformat:0 }}</td>
+                    <td style="color:#20948A;">Rp {{ trx.uang_muka|floatformat:0 }}</td>
+                    <td style="color:#B94040;">Rp {{ trx.sisa_bayar|floatformat:0 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="text-center py-4" style="color:var(--muted);">Tidak ada transaksi pada periode ini</td></tr>
+                {% endfor %}
+            </tbody>
+            {% if transaksi_list %}
+            <tfoot>
+                <tr style="background:#FAF7F0;">
+                    <td colspan="5" style="text-align:right; font-weight:700; font-size:0.88rem; padding:10px 14px;">TOTAL</td>
+                    <td style="font-weight:700; color:var(--gold-dark); padding:10px 14px;">Rp {{ total_omzet|floatformat:0 }}</td>
+                    <td style="font-weight:700; color:#20948A; padding:10px 14px;">Rp {{ total_dp|floatformat:0 }}</td>
+                    <td style="font-weight:700; color:#B94040; padding:10px 14px;">Rp {{ total_sisa|floatformat:0 }}</td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+{% endblock %}

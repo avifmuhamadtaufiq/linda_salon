@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Laporan Barang{% endblock %}
+{% block page_title %}Laporan Popularitas Barang{% endblock %}
+
+{% block topbar_actions %}
+<a href="?print=1" target="_blank" class="btn btn-outline-gold btn-sm">
+    <i class="bi bi-printer me-1"></i> Print
+</a>
+<a href="?pdf=1" target="_blank" class="btn btn-gold btn-sm">
+    <i class="bi bi-file-earmark-pdf me-1"></i> Simpan PDF
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span>Barang Berdasarkan Frekuensi Sewa (Semua Waktu)</span>
+        <div class="d-flex gap-2">
+            <a href="?print=1" target="_blank" class="btn btn-outline-gold btn-sm">
+                <i class="bi bi-printer me-1"></i> Print
+            </a>
+            <a href="?pdf=1" target="_blank" class="btn btn-gold btn-sm">
+                <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+            </a>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>#</th><th>Kode</th><th>Nama Barang</th><th>Kategori</th>
+                    <th>Total Disewa</th><th>Jml Transaksi</th><th>Total Pendapatan</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in detail_list %}
+                <tr>
+                    <td style="color:var(--muted); font-size:0.83rem;">{{ forloop.counter }}</td>
+                    <td style="font-family:monospace; font-size:0.82rem; color:var(--muted);">{{ item.barang__kode }}</td>
+                    <td><a href="{% url 'barang_detail' item.barang__id %}" style="color:var(--text); text-decoration:none; font-weight:500;">{{ item.barang__nama }}</a></td>
+                    <td style="font-size:0.83rem;">{{ item.barang__kategori__nama|default:"-" }}</td>
+                    <td style="font-weight:600;">{{ item.total_disewa }}</td>
+                    <td>{{ item.total_transaksi }}</td>
+                    <td style="font-weight:600; color:var(--gold-dark);">Rp {{ item.total_pendapatan|floatformat:0 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center py-4" style="color:var(--muted);">Belum ada data transaksi</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
