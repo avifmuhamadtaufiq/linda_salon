@@ -1,7 +1,11 @@
 from django.test import TestCase
 from apps.inventory.models import Kategori, Barang
 from apps.inventory.forms import BarangForm, KategoriForm
-
+from apps.accounts.models import UserProfile
+from django.contrib.auth.models import User
+from django.test import TestCase, Client
+from django.urls import reverse
+from decimal import Decimal
 
 class KategoriModelTest(TestCase):
 
@@ -169,3 +173,126 @@ class BarangFormTest(TestCase):
         form = BarangForm(data=data)
         self.assertFalse(form.is_valid())
         self.assertIn('harga_sewa', form.errors)
+
+
+class DashboardViewTest(TestCase):
+
+    def setUp(self):
+        # Buat client untuk simulasi browser
+        self.client = Client()
+
+        # Buat user admin
+        self.user = User.objects.create_user(
+            username='admin_test',
+            password='admin123'
+        )
+        UserProfile.objects.create(user=self.user, role='admin')
+
+    def test_dashboard_redirect_kalau_belum_login(self):
+        # Test halaman dashboard redirect ke login kalau belum login
+        response = self.client.get(reverse('dashboard'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response['Location'])
+
+    def test_dashboard_bisa_diakses_setelah_login(self):
+        # Test dashboard bisa diakses setelah login
+        self.client.login(username='admin_test', password='admin123')
+        response = self.client.get(reverse('dashboard'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_dashboard_pakai_template_yang_benar(self):
+        # Test dashboard pakai template yang benar
+        self.client.login(username='admin_test', password='admin123')
+        response = self.client.get(reverse('dashboard'))
+        self.assertTemplateUsed(response, 'inventory/dashboard.html')
+
+
+class BarangViewTest(TestCase):
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='admin_test2',
+            password='admin123'
+        )
+        UserProfile.objects.create(user=self.user, role='admin')
+        self.client.login(username='admin_test2', password='admin123')
+
+        self.kategori = Kategori.objects.create(nama='Kursi')
+        self.barang = Barang.objects.create(
+            kode='KR001',
+            nama='Kursi Tiffany',
+            kategori=self.kategori,
+            stok_total=10,
+            stok_tersedia=10,
+            harga_sewa=Decimal('10000'),
+            kondisi='baik'
+        )
+
+    def test_barang_list_tampil(self):
+        # Test halaman daftar barang bisa diakses
+        response = self.client.get(reverse('barang_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'inventory/barang_list.html')
+
+    def test_barang_list_ada_data(self):
+        # Test daftar barang menampilkan data yang benar
+        response = self.client.get(reverse('barang_list'))
+        self.assertContains(response, 'Kursi Tiffany')
+
+    def test_barang_create_GET(self):
+        # Test halaman form tambah barang bisa diakses
+        response = self.client.get(reverse('barang_create'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'inventory/barang_form.html')
+
+    def test_barang_create_POST_valid(self):
+        # Test tambah barang baru dengan data valid
+        data = {
+            'kode': 'MJ001',
+            'nama': 'Meja Bundar',
+            'kategori': self.kategori.pk,
+            'stok_total': 5,
+            'stok_tersedia': 5,
+            'harga_sewa': 50000,
+            'kondisi': 'baik',
+            'deskripsi': '',
+            'catatan': ''
+        }
+        response = self.client.post(reverse('barang_create'), data)
+        # Setelah berhasil redirect ke barang_list
+        self.assertEqual(response.status_code, 302)
+        # Pastikan barang tersimpan di database
+        self.assertTrue(Barang.objects.filter(kode='MJ001').exists())
+
+    def test_barang_create_POST_invalid(self):
+        # Test tambah barang dengan data tidak valid (kode kosong)
+        data = {
+            'kode': '',
+            'nama': 'Meja Bundar',
+            'stok_total': 5,
+            'stok_tersedia': 5,
+            'harga_sewa': 50000,
+            'kondisi': 'baik',
+        }
+        response = self.client.post(reverse('barang_create'), data)
+        # Tidak redirect, tetap di halaman form
+        self.assertEqual(response.status_code, 200)
+        # Barang tidak tersimpan
+        self.assertFalse(Barang.objects.filter(nama='Meja Bundar').exists())
+
+    def test_barang_detail_tampil(self):
+        # Test halaman detail barang bisa diakses
+        response = self.client.get(
+            reverse('barang_detail', args=[self.barang.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Kursi Tiffany')
+
+    def test_barang_delete(self):
+        # Test hapus barang
+        response = self.client.post(
+            reverse('barang_delete', args=[self.barang.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Barang.objects.filter(pk=self.barang.pk).exists())

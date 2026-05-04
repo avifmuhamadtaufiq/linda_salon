@@ -4,6 +4,8 @@ from apps.accounts.models import UserProfile
 from apps.inventory.models import Kategori, Barang
 from apps.pelanggan.models import Pelanggan
 from apps.transactions.models import Transaksi, DetailTransaksi
+from django.test import Client
+from django.urls import reverse
 from decimal import Decimal
 import datetime
 
@@ -145,3 +147,102 @@ class DetailTransaksiTest(TestCase):
         self.barang.save()
 
         self.assertEqual(self.barang.stok_tersedia, 10)
+
+
+class TransaksiViewTest(TestCase):
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='admin_test3',
+            password='admin123'
+        )
+        UserProfile.objects.create(user=self.user, role='admin')
+        self.client.login(username='admin_test3', password='admin123')
+
+        self.pelanggan = Pelanggan.objects.create(
+            nama='Ani Wijaya',
+            hp='08111111111'
+        )
+        self.barang = Barang.objects.create(
+            kode='TD001',
+            nama='Tenda Dekorasi',
+            stok_total=5,
+            stok_tersedia=5,
+            harga_sewa=Decimal('100000'),
+            kondisi='baik'
+        )
+        self.transaksi = Transaksi.objects.create(
+            no_transaksi='SW20260504003',
+            pelanggan=self.pelanggan,
+            pelanggan_nama=self.pelanggan.nama,
+            pelanggan_hp=self.pelanggan.hp,
+            tanggal_sewa=datetime.date(2026, 5, 4),
+            tanggal_kembali=datetime.date(2026, 5, 6),
+            uang_muka=Decimal('100000'),
+            total_harga=Decimal('200000'),
+            sisa_bayar=Decimal('100000'),
+            dibuat_oleh=self.user,
+        )
+
+    def test_transaksi_list_tampil(self):
+        # Test halaman daftar transaksi bisa diakses
+        response = self.client.get(reverse('transaksi_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'transactions/transaksi_list.html')
+
+    def test_transaksi_list_ada_data(self):
+        # Test daftar transaksi menampilkan data yang benar
+        response = self.client.get(reverse('transaksi_list'))
+        self.assertContains(response, 'SW20260504003')
+
+    def test_transaksi_detail_tampil(self):
+        # Test halaman detail transaksi bisa diakses
+        response = self.client.get(
+            reverse('transaksi_detail', args=[self.transaksi.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'SW20260504003')
+
+    def test_transaksi_create_GET(self):
+        # Test halaman form buat transaksi bisa diakses
+        response = self.client.get(reverse('transaksi_create'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'transactions/transaksi_form.html')
+
+    def test_transaksi_kembali(self):
+        # Test proses pengembalian barang
+        # Tambah detail dulu
+        DetailTransaksi.objects.create(
+            transaksi=self.transaksi,
+            barang=self.barang,
+            jumlah=2,
+            jumlah_hari=2,
+            harga_satuan=Decimal('100000'),
+            subtotal=Decimal('400000'),
+        )
+        self.barang.stok_tersedia = 3
+        self.barang.save()
+
+        # Proses pengembalian
+        response = self.client.post(
+            reverse('transaksi_kembali', args=[self.transaksi.pk]),
+            {f'kondisi_kembali_{DetailTransaksi.objects.first().pk}': 'Baik'}
+        )
+
+        # Cek redirect setelah berhasil
+        self.assertEqual(response.status_code, 302)
+
+        # Cek status transaksi berubah jadi selesai
+        self.transaksi.refresh_from_db()
+        self.assertEqual(self.transaksi.status, 'selesai')
+
+        # Cek stok bertambah kembali
+        self.barang.refresh_from_db()
+        self.assertEqual(self.barang.stok_tersedia, 5)
+
+    def test_jadwal_tampil(self):
+        # Test halaman jadwal bisa diakses
+        response = self.client.get(reverse('jadwal'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'transactions/jadwal.html')
