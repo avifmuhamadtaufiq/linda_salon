@@ -18,17 +18,6 @@ def generate_no_transaksi():
     return f"{prefix}{str(last + 1).zfill(3)}"
 
 
-def hitung_jumlah_hari(tanggal_sewa, tanggal_kembali):
-    """Hitung jumlah hari antara tanggal sewa dan kembali, minimal 1 hari"""
-    try:
-        tgl_sewa = datetime.datetime.strptime(str(tanggal_sewa), '%Y-%m-%d').date()
-        tgl_kembali = datetime.datetime.strptime(str(tanggal_kembali), '%Y-%m-%d').date()
-        selisih = (tgl_kembali - tgl_sewa).days
-        return max(selisih, 1)
-    except:
-        return 1
-
-
 @login_required
 def transaksi_list(request):
     q = request.GET.get('q', '')
@@ -75,25 +64,22 @@ def transaksi_create(request):
                 uang_muka_raw = request.POST.get('uang_muka', '0') or '0'
                 uang_muka = Decimal(str(uang_muka_raw))
 
-                tanggal_sewa = request.POST['tanggal_sewa']
-                tanggal_kembali = request.POST['tanggal_kembali']
-
-                # Hitung otomatis jumlah hari
-                jumlah_hari = hitung_jumlah_hari(tanggal_sewa, tanggal_kembali)
-
-                # Cek pelanggan
+                # Cek apakah pilih pelanggan lama atau buat baru
                 pelanggan_id = request.POST.get('pelanggan_id', '')
                 pelanggan_obj = None
 
                 if pelanggan_id:
+                    # Pakai pelanggan yang sudah ada
                     pelanggan_obj = Pelanggan.objects.get(pk=int(pelanggan_id))
                     nama = pelanggan_obj.nama
                     hp = pelanggan_obj.hp
                     alamat = pelanggan_obj.alamat
                 else:
+                    # Buat pelanggan baru otomatis
                     nama = request.POST.get('pelanggan_nama', '')
                     hp = request.POST.get('pelanggan_hp', '')
                     alamat = request.POST.get('pelanggan_alamat', '')
+
                     if nama and hp:
                         pelanggan_obj, created = Pelanggan.objects.get_or_create(
                             hp=hp,
@@ -111,8 +97,8 @@ def transaksi_create(request):
                     pelanggan_hp=hp,
                     pelanggan_alamat=alamat,
                     acara=request.POST.get('acara', ''),
-                    tanggal_sewa=tanggal_sewa,
-                    tanggal_kembali=tanggal_kembali,
+                    tanggal_sewa=request.POST['tanggal_sewa'],
+                    tanggal_kembali=request.POST['tanggal_kembali'],
                     uang_muka=uang_muka,
                     catatan=request.POST.get('catatan', ''),
                     dibuat_oleh=request.user,
@@ -132,14 +118,12 @@ def transaksi_create(request):
                         raise ValueError(f"Stok {barang.nama} tidak mencukupi (tersedia: {barang.stok_tersedia})")
 
                     harga_satuan = Decimal(str(barang.harga_sewa))
-                    # Harga = harga/hari x jumlah barang x jumlah hari
-                    subtotal = harga_satuan * Decimal(str(jml)) * Decimal(str(jumlah_hari))
+                    subtotal = Decimal(str(jml)) * harga_satuan
 
                     DetailTransaksi.objects.create(
                         transaksi=trx,
                         barang=barang,
                         jumlah=jml,
-                        jumlah_hari=jumlah_hari,
                         harga_satuan=harga_satuan,
                         subtotal=subtotal,
                         kondisi_keluar=request.POST.get(f'kondisi_keluar_{b_id}', 'Baik')
@@ -152,11 +136,12 @@ def transaksi_create(request):
                 trx.sisa_bayar = total - uang_muka
                 trx.save()
 
+                # Update total transaksi pelanggan
                 if pelanggan_obj:
                     pelanggan_obj.total_transaksi = pelanggan_obj.transaksi_set.count()
                     pelanggan_obj.save()
 
-                messages.success(request, f'Transaksi {no_transaksi} berhasil dibuat. ({jumlah_hari} hari sewa)')
+                messages.success(request, f'Transaksi {no_transaksi} berhasil dibuat.')
                 return redirect('transaksi_detail', pk=trx.pk)
 
         except ValueError as e:

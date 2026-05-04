@@ -40,14 +40,13 @@ class DetailTransaksi(models.Model):
     transaksi = models.ForeignKey(Transaksi, on_delete=models.CASCADE, related_name='detail')
     barang = models.ForeignKey(Barang, on_delete=models.PROTECT, related_name='detail_transaksi')
     jumlah = models.PositiveIntegerField(default=1)
-    jumlah_hari = models.PositiveIntegerField(default=1)
     harga_satuan = models.DecimalField(max_digits=12, decimal_places=0)
     subtotal = models.DecimalField(max_digits=15, decimal_places=0, default=0)
     kondisi_keluar = models.CharField(max_length=100, blank=True)
     kondisi_kembali = models.CharField(max_length=100, blank=True)
 
     def __str__(self):
-        return f"{self.barang.nama} x{self.jumlah} x{self.jumlah_hari} hari"
+        return f"{self.barang.nama} x{self.jumlah}"
 
     class Meta:
         verbose_name = 'Detail Transaksi'
