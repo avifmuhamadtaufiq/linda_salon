@@ -105,13 +105,20 @@
             <div class="card-header">Jadwal & Pembayaran</div>
             <div class="card-body p-3">
                 <div class="row g-2">
-                    <div class="col-md-6">
+                    <div class="col-md-5">
                         <label class="form-label">Tanggal Sewa *</label>
-                        <input type="date" name="tanggal_sewa" class="form-control" value="{{ today }}" required>
+                        <input type="date" name="tanggal_sewa" id="tanggal_sewa" class="form-control" value="{{ today }}" required onchange="hitungHari()">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-5">
                         <label class="form-label">Tanggal Kembali *</label>
-                        <input type="date" name="tanggal_kembali" class="form-control" required>
+                        <input type="date" name="tanggal_kembali" id="tanggal_kembali" class="form-control" required onchange="hitungHari()">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Durasi</label>
+                        <div id="info_hari" style="background:#FAF7F0; border:1px solid #EDE8DC; border-radius:8px; padding:8px 10px; text-align:center;">
+                            <div id="jumlah_hari_display" style="font-family:Cormorant Garamond,serif; font-size:1.4rem; font-weight:700; color:var(--gold-dark); line-height:1;">-</div>
+                            <div style="font-size:0.7rem; color:var(--muted);">hari</div>
+                        </div>
                     </div>
                     <div class="col-12">
                         <label class="form-label">Nama Acara</label>
@@ -289,6 +296,24 @@ function formatRp(n) {
     return 'Rp ' + Math.round(n).toLocaleString('id-ID');
 }
 
+function getJumlahHari() {
+    const tglSewa = document.getElementById('tanggal_sewa').value;
+    const tglKembali = document.getElementById('tanggal_kembali').value;
+    if (!tglSewa || !tglKembali) return 1;
+    const diff = (new Date(tglKembali) - new Date(tglSewa)) / (1000 * 60 * 60 * 24);
+    return Math.max(Math.round(diff), 1);
+}
+
+function hitungHari() {
+    const hari = getJumlahHari();
+    const el = document.getElementById('jumlah_hari_display');
+    if (el) el.textContent = hari;
+    // Update semua baris kalkulasi
+    document.querySelectorAll('.barang-select').forEach(sel => {
+        if (sel.value) onBarangChange(sel);
+    });
+}
+
 function updateTotal() {
     let total = 0;
     document.querySelectorAll('.row-subtotal').forEach(el => {
@@ -341,10 +366,12 @@ function calcRow(input) {
     const opt = sel.selectedOptions[0];
     if (!opt || !opt.value) return;
     const harga = parseFloat(opt.dataset.harga);
-    const jml = parseFloat(input.value) || 0;
-    const subtotal = harga * jml;
+    const jml = parseFloat(tr.querySelector('.jumlah-input').value) || 0;
+    const hari = getJumlahHari();
+    const subtotal = harga * jml * hari;
     const cell = tr.querySelector('.row-subtotal');
-    cell.textContent = formatRp(subtotal);
+    // Tampilkan breakdown harga
+    cell.innerHTML = '<div>' + formatRp(subtotal) + '</div><div style="font-size:0.72rem;color:var(--muted);">' + formatRp(harga) + ' x' + jml + ' x' + hari + ' hari</div>';
     cell.dataset.val = subtotal;
     updateTotal();
 }
