@@ -15,6 +15,15 @@
                 <option value="selesai" {% if selected_status == "selesai" %}selected{% endif %}>Selesai</option>
                 <option value="batal" {% if selected_status == "batal" %}selected{% endif %}>Batal</option>
             </select>
+            <select name="pengguna" class="form-select" style="max-width:200px;">
+                <option value="">Semua Pengguna</option>
+                {% for p in pengguna_list %}
+                <option value="{{ p.pk }}"
+                    {% if selected_pengguna == p.pk|stringformat:"s" %}selected{% endif %}>
+                    {{ p.get_full_name|default:p.username }}
+                </option>
+                {% endfor %}
+            </select>
             <input type="date" name="tanggal" value="{{ tanggal }}" class="form-control" style="max-width:160px;">
             <button type="submit" class="btn btn-gold btn-sm">Filter</button>
             <a href="{% url 'transaksi_list' %}" class="btn btn-outline-gold btn-sm">Reset</a>
@@ -23,7 +32,7 @@
     <div class="table-responsive">
         <table class="table mb-0">
             <thead>
-                <tr><th>No. Transaksi</th><th>Pelanggan</th><th>Acara</th><th>Tgl Sewa</th><th>Tgl Kembali</th><th>Total</th><th>Status</th><th>Aksi</th></tr>
+                <tr><th>No. Transaksi</th><th>Pelanggan</th><th>Acara</th><th>Tgl Sewa</th><th>Tgl Kembali</th><th>Dibuat Oleh</th><th>Total</th><th>Status</th><th>Aksi</th></tr>
             </thead>
             <tbody>
                 {% for trx in transaksi_list %}
@@ -36,6 +45,9 @@
                     <td style="font-size:0.83rem; color:var(--muted);">{{ trx.acara|default:"-" }}</td>
                     <td>{{ trx.tanggal_sewa|date:"d M Y" }}</td>
                     <td>{{ trx.tanggal_kembali|date:"d M Y" }}</td>
+                    <td style="font-size:0.83rem; color:var(--muted);">
+                        {{ trx.dibuat_oleh.get_full_name|default:trx.dibuat_oleh.username|default:"-" }}
+                    </td>
                     <td style="font-weight:600;">Rp {{ trx.total_harga|floatformat:0 }}</td>
                     <td><span class="badge-{{ trx.status }}">{{ trx.get_status_display }}</span></td>
                     <td>

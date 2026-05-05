@@ -246,3 +246,48 @@ class TransaksiViewTest(TestCase):
         response = self.client.get(reverse('jadwal'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'transactions/jadwal.html')
+
+    def test_filter_by_pengguna(self):
+        """Test filter transaksi berdasarkan pengguna"""
+
+        # Buat user karyawan
+        karyawan = User.objects.create_user(
+            username='karyawan_test',
+            password='karyawan123'
+        )
+        UserProfile.objects.create(user=karyawan, role='karyawan')
+
+        # Buat transaksi oleh karyawan
+        Transaksi.objects.create(
+            no_transaksi='SW20260504KRY',
+            pelanggan_nama='Pelanggan Karyawan',
+            pelanggan_hp='08133333333',
+            tanggal_sewa=datetime.date(2026, 5, 4),
+            tanggal_kembali=datetime.date(2026, 5, 6),
+            uang_muka=Decimal('0'),
+            total_harga=Decimal('100000'),
+            sisa_bayar=Decimal('100000'),
+            dibuat_oleh=karyawan,
+        )
+
+        # Filter by admin → hanya tampil transaksi admin
+        response = self.client.get(
+            reverse('transaksi_list'),
+            {'pengguna': self.user.pk}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'SW20260504003')
+        self.assertNotContains(response, 'SW20260504KRY')
+
+        # Filter by karyawan → hanya tampil transaksi karyawan
+        response = self.client.get(
+            reverse('transaksi_list'),
+            {'pengguna': karyawan.pk}
+        )
+        self.assertContains(response, 'SW20260504KRY')
+        self.assertNotContains(response, 'SW20260504003')
+
+        # Tanpa filter → semua transaksi tampil
+        response = self.client.get(reverse('transaksi_list'))
+        self.assertContains(response, 'SW20260504003')
+        self.assertContains(response, 'SW20260504KRY')

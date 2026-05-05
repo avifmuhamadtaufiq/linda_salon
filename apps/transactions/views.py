@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Q
@@ -7,6 +8,7 @@ from django.utils import timezone
 from .models import Transaksi, DetailTransaksi
 from apps.inventory.models import Barang
 from apps.pelanggan.models import Pelanggan
+
 import datetime
 from decimal import Decimal
 
@@ -34,6 +36,7 @@ def transaksi_list(request):
     q = request.GET.get('q', '')
     status = request.GET.get('status', '')
     tanggal = request.GET.get('tanggal', '')
+    pengguna_id = request.GET.get('pengguna', '')
 
     transaksi = Transaksi.objects.select_related('pelanggan').all()
     if q:
@@ -44,12 +47,22 @@ def transaksi_list(request):
         transaksi = transaksi.filter(status=status)
     if tanggal:
         transaksi = transaksi.filter(tanggal_sewa=tanggal)
+    if pengguna_id:                                
+        transaksi = transaksi.filter(dibuat_oleh_id=pengguna_id)
+
+    # Ambil semua pengguna untuk dropdown filter
+    pengguna_list = User.objects.filter(
+        transaksi__isnull=False
+    ).distinct().order_by('first_name')
+
 
     return render(request, 'transactions/transaksi_list.html', {
         'transaksi_list': transaksi,
         'q': q,
         'selected_status': status,
         'tanggal': tanggal,
+        'pengguna_list': pengguna_list,       
+        'selected_pengguna': pengguna_id,     
     })
 
 
