@@ -25,6 +25,14 @@ class Transaksi(models.Model):
     sisa_bayar = models.DecimalField(max_digits=15, decimal_places=0, default=0)
     catatan = models.TextField(blank=True)
     dibuat_oleh = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='transaksi')
+    alasan_batal = models.TextField(blank=True, null=True)
+    dibatalkan_oleh = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='transaksi_dibatalkan'
+    )
+    dibatalkan_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

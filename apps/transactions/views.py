@@ -221,3 +221,42 @@ def jadwal_view(request):
         'akan_datang': akan_datang,
         'today': today,
     })
+
+
+@login_required
+def transaksi_batal(request, pk):
+    transaksi = get_object_or_404(Transaksi, pk=pk, status='aktif')
+
+    if request.method == 'POST':
+        alasan = request.POST.get('alasan_batal', '').strip()
+
+        # Alasan wajib diisi
+        if not alasan:
+            messages.error(request, 'Alasan pembatalan wajib diisi.')
+            return render(request, 'transactions/transaksi_batal.html', {
+                'transaksi': transaksi,
+                'error': 'Alasan pembatalan wajib diisi.'
+            })
+
+        with transaction.atomic():
+            # Kembalikan stok barang
+            for detail in transaksi.detail.select_related('barang'):
+                detail.barang.stok_tersedia += detail.jumlah
+                detail.barang.save()
+
+            # Update status transaksi
+            transaksi.status = 'batal'
+            transaksi.alasan_batal = alasan
+            transaksi.dibatalkan_oleh = request.user
+            transaksi.dibatalkan_at = timezone.now()
+            transaksi.save()
+
+        messages.success(
+            request,
+            f'Transaksi {transaksi.no_transaksi} berhasil dibatalkan.'
+        )
+        return redirect('transaksi_detail', pk=transaksi.pk)
+
+    return render(request, 'transactions/transaksi_batal.html', {
+        'transaksi': transaksi,
+    })
