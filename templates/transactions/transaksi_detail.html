@@ -49,7 +49,7 @@
             <div class="table-responsive">
                 <table class="table mb-0">
                     <thead>
-                        <tr><th>Barang</th><th>Jumlah</th><th>Harga Satuan</th><th>Subtotal</th><th>Kondisi Keluar</th><th>Kondisi Kembali</th></tr>
+                        <tr><th>Barang</th><th>Jumlah</th><th>Gudang</th><th>Harga Satuan</th><th>Subtotal</th><th>Kondisi Keluar</th><th>Kondisi Kembali</th></tr>
                     </thead>
                     <tbody>
                         {% for d in detail %}
@@ -59,6 +59,16 @@
                                 <br><small style="color:var(--muted); font-family:monospace;">{{ d.barang.kode }}</small>
                             </td>
                             <td>{{ d.jumlah }}</td>
+                            <td>
+                                {% if d.barang.gudang %}
+                                <span style="background:rgba(201,168,76,0.1); color:var(--gold-dark);
+                                    padding:3px 10px; border-radius:20px; font-size:0.78rem;">
+                                    <i class="bi bi-building me-1"></i>{{ d.barang.gudang.nama }}
+                                </span>
+                                {% else %}
+                                <span style="color:var(--muted); font-size:0.83rem;">-</span>
+                                {% endif %}
+                            </td>
                             <td>Rp {{ d.harga_satuan|floatformat:0 }}</td>
                             <td style="font-weight:600;">Rp {{ d.subtotal|floatformat:0 }}</td>
                             <td style="font-size:0.83rem;">{{ d.kondisi_keluar|default:"-" }}</td>

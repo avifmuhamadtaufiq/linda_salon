@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Hapus Gudang{% endblock %}
+{% block page_title %}Hapus Gudang{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card text-center p-4">
+            <i class="bi bi-building" style="font-size:2.5rem;
+                color:#B94040; margin-bottom:12px;"></i>
+            <h5 style="font-family:'Cormorant Garamond',serif;">Hapus Gudang</h5>
+            <p style="color:var(--muted); font-size:0.9rem; margin-top:8px;">
+                Yakin ingin menghapus gudang <strong>{{ gudang.nama }}</strong>?<br>
+                <small>Barang yang terkait tidak akan terhapus,
+                    hanya info gudangnya yang dihapus.</small>
+            </p>
+            <div class="d-flex gap-2 justify-content-center mt-3">
+                <form method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm"
+                        style="background:#B94040; color:white;
+                        border-radius:8px; padding:8px 20px;">
+                        Ya, Hapus
+                    </button>
+                </form>
+                <a href="{% url 'gudang_list' %}"
+                    class="btn btn-outline-gold btn-sm">Batal</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

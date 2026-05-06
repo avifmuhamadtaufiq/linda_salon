@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}Daftar Gudang{% endblock %}
+{% block page_title %}Daftar Gudang{% endblock %}
+{% block topbar_actions %}
+<a href="{% url 'gudang_create' %}" class="btn btn-gold btn-sm">
+    <i class="bi bi-plus-lg me-1"></i> Tambah Gudang
+</a>
+{% endblock %}
+{% block content %}
+<div class="row g-3">
+    {% for g in gudang_list %}
+    <div class="col-md-4">
+        <div class="card p-3">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div style="font-family:'Cormorant Garamond',serif;
+                        font-size:1.2rem; font-weight:700;">
+                        <i class="bi bi-building me-1"
+                            style="color:var(--gold-dark);"></i>
+                        {{ g.nama }}
+                    </div>
+                    {% if g.alamat %}
+                    <div style="font-size:0.83rem; color:var(--muted); margin-top:4px;">
+                        <i class="bi bi-geo-alt me-1"></i>{{ g.alamat }}
+                    </div>
+                    {% endif %}
+                    {% if g.keterangan %}
+                    <div style="font-size:0.8rem; color:var(--muted); margin-top:4px;">
+                        {{ g.keterangan }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% if g.aktif %}
+                <span class="badge-aktif">Aktif</span>
+                {% else %}
+                <span class="badge-batal">Nonaktif</span>
+                {% endif %}
+            </div>
+            <hr style="border-color:#EDE8DC; margin:10px 0;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div style="font-size:0.83rem; color:var(--muted);">
+                    {{ g.barang.count }} barang tersimpan
+                </div>
+                <div class="d-flex gap-1">
+                    <a href="{% url 'gudang_edit' g.pk %}"
+                        class="btn btn-sm btn-outline-gold">Edit</a>
+                    <a href="{% url 'gudang_delete' g.pk %}" class="btn btn-sm"
+                        style="background:rgba(220,80,80,0.08); color:#B94040;
+                        border:1px solid rgba(220,80,80,0.2); border-radius:8px;">
+                        Hapus
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5" style="color:var(--muted);">
+        <i class="bi bi-building" style="font-size:2rem; display:block;
+            margin-bottom:8px; opacity:0.3;"></i>
+        Belum ada gudang.<br>
+        <a href="{% url 'gudang_create' %}"
+            style="color:var(--gold-dark);">Tambah gudang pertama</a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

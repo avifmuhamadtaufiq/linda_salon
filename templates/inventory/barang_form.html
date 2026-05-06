@@ -46,6 +46,25 @@
                             <label class="form-label">Foto Barang</label>
                             {{ form.foto }}
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                Gudang <span style="color:#B94040;">*</span>
+                            </label>
+                            {{ form.gudang }}
+                            {% if form.gudang.errors %}
+                            <div style="color:#B94040; font-size:0.8rem; margin-top:4px;">
+                                {{ form.gudang.errors.0 }}
+                            </div>
+                            {% endif %}
+                            <div style="font-size:0.75rem; color:var(--muted); margin-top:4px;">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Pilih gudang tempat barang disimpan.
+                                <a href="{% url 'gudang_create' %}" target="_blank"
+                                    style="color:var(--gold-dark);">
+                                    + Tambah gudang baru
+                                </a>
+                            </div>
+                        </div>
                         <div class="col-12">
                             <label class="form-label">Catatan</label>
                             {{ form.catatan }}

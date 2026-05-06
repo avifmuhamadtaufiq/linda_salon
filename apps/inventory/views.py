@@ -5,6 +5,7 @@ from django.db.models import Q, Sum
 from django.utils import timezone
 from .models import Barang, Kategori
 from .forms import BarangForm, KategoriForm
+from .models import Barang, Kategori, Gudang
 from apps.transactions.models import Transaksi
 
 
@@ -44,6 +45,7 @@ def barang_list(request):
     q = request.GET.get('q', '')
     kategori_id = request.GET.get('kategori', '')
     kondisi = request.GET.get('kondisi', '')
+    gudang_id = request.GET.get('gudang', '')
 
     barang = Barang.objects.select_related('kategori').all()
     if q:
@@ -52,14 +54,20 @@ def barang_list(request):
         barang = barang.filter(kategori_id=kategori_id)
     if kondisi:
         barang = barang.filter(kondisi=kondisi)
+    if gudang_id:                              
+        barang = barang.filter(gudang_id=gudang_id)
 
     kategori_list = Kategori.objects.all()
+    gudang_list = Gudang.objects.filter(aktif=True)
+
     return render(request, 'inventory/barang_list.html', {
         'barang_list': barang,
         'kategori_list': kategori_list,
+        'gudang_list': gudang_list,
         'q': q,
         'selected_kategori': kategori_id,
         'selected_kondisi': kondisi,
+        'selected_gudang': gudang_id,
     })
 
 
@@ -115,3 +123,60 @@ def kategori_create(request):
         messages.success(request, 'Kategori berhasil ditambahkan.')
         return redirect('kategori_list')
     return render(request, 'inventory/kategori_form.html', {'form': form, 'title': 'Tambah Kategori'})
+
+
+@login_required
+def gudang_list(request):
+    gudang = Gudang.objects.all()
+    return render(request, 'inventory/gudang_list.html', {
+        'gudang_list': gudang
+    })
+
+
+@login_required
+def gudang_create(request):
+    if request.method == 'POST':
+        nama = request.POST.get('nama', '')
+        alamat = request.POST.get('alamat', '')
+        keterangan = request.POST.get('keterangan', '')
+        if nama:
+            Gudang.objects.create(
+                nama=nama,
+                alamat=alamat,
+                keterangan=keterangan
+            )
+            messages.success(request, f'Gudang "{nama}" berhasil ditambahkan.')
+            return redirect('gudang_list')
+        messages.error(request, 'Nama gudang tidak boleh kosong.')
+    return render(request, 'inventory/gudang_form.html', {
+        'title': 'Tambah Gudang'
+    })
+
+
+@login_required
+def gudang_edit(request, pk):
+    gudang = get_object_or_404(Gudang, pk=pk)
+    if request.method == 'POST':
+        gudang.nama = request.POST.get('nama', gudang.nama)
+        gudang.alamat = request.POST.get('alamat', gudang.alamat)
+        gudang.keterangan = request.POST.get('keterangan', gudang.keterangan)
+        gudang.aktif = request.POST.get('aktif') == 'on'
+        gudang.save()
+        messages.success(request, f'Gudang "{gudang.nama}" berhasil diperbarui.')
+        return redirect('gudang_list')
+    return render(request, 'inventory/gudang_form.html', {
+        'title': 'Edit Gudang',
+        'gudang': gudang
+    })
+
+
+@login_required
+def gudang_delete(request, pk):
+    gudang = get_object_or_404(Gudang, pk=pk)
+    if request.method == 'POST':
+        gudang.delete()
+        messages.success(request, 'Gudang berhasil dihapus.')
+        return redirect('gudang_list')
+    return render(request, 'inventory/gudang_confirm_delete.html', {
+        'gudang': gudang
+    })

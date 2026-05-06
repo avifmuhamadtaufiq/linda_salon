@@ -236,6 +236,10 @@
         <a href="{% url 'kategori_list' %}" class="{% if request.resolver_match.url_name == 'kategori_list' %}active{% endif %}">
             <i class="bi bi-tag"></i> Kategori
         </a>
+        <a href="{% url 'gudang_list' %}"
+            class="{% if request.resolver_match.url_name == 'gudang_list' %}active{% endif %}">
+            <i class="bi bi-building"></i> Gudang
+        </a>
 
         <div class="nav-section-label">Laporan</div>
         <a href="{% url 'laporan_keuangan' %}" class="{% if request.resolver_match.url_name == 'laporan_keuangan' %}active{% endif %}">

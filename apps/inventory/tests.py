@@ -1,5 +1,5 @@
 from django.test import TestCase
-from apps.inventory.models import Kategori, Barang
+from apps.inventory.models import Kategori, Barang, Gudang
 from apps.inventory.forms import BarangForm, KategoriForm
 from apps.accounts.models import UserProfile
 from django.contrib.auth.models import User
@@ -98,6 +98,10 @@ class BarangFormTest(TestCase):
 
     def setUp(self):
         self.kategori = Kategori.objects.create(nama='Dekorasi')
+        self.gudang = Gudang.objects.create(
+            nama='Gudang Andir',
+            alamat='Jl. Andir No. 1'
+        )
 
     def test_form_valid(self):
         # Test form valid dengan data lengkap dan benar
@@ -105,6 +109,7 @@ class BarangFormTest(TestCase):
             'kode': 'DK001',
             'nama': 'Bunga Mawar',
             'kategori': self.kategori.pk,
+            'gudang': self.gudang.pk,
             'stok_total': 50,
             'stok_tersedia': 50,
             'harga_sewa': 25000,
@@ -228,6 +233,10 @@ class BarangViewTest(TestCase):
             harga_sewa=Decimal('10000'),
             kondisi='baik'
         )
+        self.gudang = Gudang.objects.create(
+            nama='Gudang Andir',
+            alamat='Jl. Andir No. 1'
+        )
 
     def test_barang_list_tampil(self):
         # Test halaman daftar barang bisa diakses
@@ -252,6 +261,7 @@ class BarangViewTest(TestCase):
             'kode': 'MJ001',
             'nama': 'Meja Bundar',
             'kategori': self.kategori.pk,
+            'gudang': self.gudang.pk,
             'stok_total': 5,
             'stok_tersedia': 5,
             'harga_sewa': 50000,
