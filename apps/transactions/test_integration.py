@@ -2,7 +2,7 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User
 from apps.accounts.models import UserProfile
-from apps.inventory.models import Kategori, Barang
+from apps.inventory.models import Kategori, Barang, Gudang
 from apps.pelanggan.models import Pelanggan
 from apps.transactions.models import Transaksi, DetailTransaksi
 from decimal import Decimal
@@ -230,3 +230,176 @@ class LaporanViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         # Transaksi di bulan 5, tidak muncul di filter bulan 1
         self.assertNotContains(response, 'SW20260504LAP')
+
+class GudangIntegrationTest(TestCase):
+    """
+    Integration test untuk alur gudang:
+    Tambah gudang → tambah barang di gudang → transaksi → cek gudang di detail
+    """
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='admin_gudang_int',
+            password='admin123'
+        )
+        UserProfile.objects.create(user=self.user, role='admin')
+        self.client.login(username='admin_gudang_int', password='admin123')
+
+        # Buat 2 gudang
+        self.gudang_andir = Gudang.objects.create(
+            nama='Gudang Andir',
+            alamat='Jl. Andir No. 1',
+            aktif=True
+        )
+        self.gudang_kubang = Gudang.objects.create(
+            nama='Gudang Kubang',
+            alamat='Jl. Kubang No. 2',
+            aktif=True
+        )
+
+        # Buat kategori
+        self.kategori = Kategori.objects.create(nama='Kursi')
+
+        # Buat barang di masing-masing gudang
+        self.barang_andir = Barang.objects.create(
+            kode='AN001',
+            nama='Kursi Andir',
+            kategori=self.kategori,
+            gudang=self.gudang_andir,
+            stok_total=10,
+            stok_tersedia=10,
+            harga_sewa=Decimal('10000'),
+            kondisi='baik'
+        )
+        self.barang_kubang = Barang.objects.create(
+            kode='KB001',
+            nama='Kursi Kubang',
+            kategori=self.kategori,
+            gudang=self.gudang_kubang,
+            stok_total=5,
+            stok_tersedia=5,
+            harga_sewa=Decimal('15000'),
+            kondisi='baik'
+        )
+
+    def test_barang_terkait_gudang_benar(self):
+        """Test barang tersimpan di gudang yang benar"""
+        self.assertEqual(self.barang_andir.gudang, self.gudang_andir)
+        self.assertEqual(self.barang_kubang.gudang, self.gudang_kubang)
+
+    def test_gudang_punya_barang_yang_benar(self):
+        """Test setiap gudang punya barang yang benar"""
+        self.assertEqual(self.gudang_andir.barang.count(), 1)
+        self.assertEqual(self.gudang_kubang.barang.count(), 1)
+        self.assertIn(self.barang_andir, self.gudang_andir.barang.all())
+        self.assertIn(self.barang_kubang, self.gudang_kubang.barang.all())
+
+    def test_alur_transaksi_dengan_barang_dari_dua_gudang(self):
+        """
+        Test transaksi dengan barang dari 2 gudang berbeda
+        1. Buat transaksi
+        2. Tambah barang dari gudang andir dan kubang
+        3. Cek stok berkurang di masing-masing gudang
+        4. Proses pengembalian
+        5. Cek stok kembali normal
+        """
+        # Buat pelanggan
+        pelanggan = Pelanggan.objects.create(
+            nama='Test Pelanggan',
+            hp='08100000000'
+        )
+
+        # Step 1: Buat transaksi
+        transaksi = Transaksi.objects.create(
+            no_transaksi='SW20260506INT',
+            pelanggan=pelanggan,
+            pelanggan_nama=pelanggan.nama,
+            pelanggan_hp=pelanggan.hp,
+            tanggal_sewa=datetime.date(2026, 5, 6),
+            tanggal_kembali=datetime.date(2026, 5, 8),
+            uang_muka=Decimal('0'),
+            total_harga=Decimal('0'),
+            dibuat_oleh=self.user,
+        )
+
+        # Step 2: Tambah barang dari gudang andir
+        detail_andir = DetailTransaksi.objects.create(
+            transaksi=transaksi,
+            barang=self.barang_andir,
+            jumlah=3,
+            jumlah_hari=2,
+            harga_satuan=Decimal('10000'),
+            subtotal=Decimal('60000'),  # 10000 x 3 x 2
+        )
+        self.barang_andir.stok_tersedia -= 3
+        self.barang_andir.save()
+
+        # Tambah barang dari gudang kubang
+        detail_kubang = DetailTransaksi.objects.create(
+            transaksi=transaksi,
+            barang=self.barang_kubang,
+            jumlah=2,
+            jumlah_hari=2,
+            harga_satuan=Decimal('15000'),
+            subtotal=Decimal('60000'),  # 15000 x 2 x 2
+        )
+        self.barang_kubang.stok_tersedia -= 2
+        self.barang_kubang.save()
+
+        # Update total transaksi
+        transaksi.total_harga = Decimal('120000')
+        transaksi.sisa_bayar = Decimal('120000')
+        transaksi.save()
+
+        # Step 3: Cek stok berkurang di masing-masing gudang
+        self.barang_andir.refresh_from_db()
+        self.barang_kubang.refresh_from_db()
+        self.assertEqual(self.barang_andir.stok_tersedia, 7)
+        self.assertEqual(self.barang_kubang.stok_tersedia, 3)
+
+        # Step 4: Proses pengembalian
+        response = self.client.post(
+            reverse('transaksi_kembali', args=[transaksi.pk]),
+            {
+                f'kondisi_kembali_{detail_andir.pk}': 'Baik',
+                f'kondisi_kembali_{detail_kubang.pk}': 'Baik',
+            }
+        )
+        self.assertEqual(response.status_code, 302)
+
+        # Step 5: Cek stok kembali normal
+        self.barang_andir.refresh_from_db()
+        self.barang_kubang.refresh_from_db()
+        self.assertEqual(self.barang_andir.stok_tersedia, 10)
+        self.assertEqual(self.barang_kubang.stok_tersedia, 5)
+
+        # Cek status transaksi selesai
+        transaksi.refresh_from_db()
+        self.assertEqual(transaksi.status, 'selesai')
+
+    def test_gudang_nonaktif_tidak_muncul_di_form(self):
+        """Test gudang nonaktif tidak muncul di dropdown form barang"""
+        from apps.inventory.forms import BarangForm
+        self.gudang_kubang.aktif = False
+        self.gudang_kubang.save()
+
+        form = BarangForm()
+        gudang_queryset = form.fields['gudang'].queryset
+        self.assertIn(self.gudang_andir, gudang_queryset)
+        self.assertNotIn(self.gudang_kubang, gudang_queryset)
+
+    def test_total_stok_per_gudang(self):
+        """Test hitung total stok barang per gudang"""
+        from django.db.models import Sum
+
+        total_andir = Barang.objects.filter(
+            gudang=self.gudang_andir
+        ).aggregate(total=Sum('stok_tersedia'))['total']
+
+        total_kubang = Barang.objects.filter(
+            gudang=self.gudang_kubang
+        ).aggregate(total=Sum('stok_tersedia'))['total']
+
+        self.assertEqual(total_andir, 10)
+        self.assertEqual(total_kubang, 5)

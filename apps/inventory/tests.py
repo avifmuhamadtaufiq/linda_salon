@@ -306,3 +306,199 @@ class BarangViewTest(TestCase):
         )
         self.assertEqual(response.status_code, 302)
         self.assertFalse(Barang.objects.filter(pk=self.barang.pk).exists())
+
+from apps.inventory.models import Kategori, Barang, Gudang
+
+
+class GudangModelTest(TestCase):
+
+    def setUp(self):
+        self.gudang = Gudang.objects.create(
+            nama='Gudang Andir',
+            alamat='Jl. Andir No. 1',
+            keterangan='Gudang utama',
+            aktif=True
+        )
+
+    def test_gudang_dibuat_benar(self):
+        # Test gudang tersimpan dengan benar
+        self.assertEqual(self.gudang.nama, 'Gudang Andir')
+        self.assertEqual(self.gudang.alamat, 'Jl. Andir No. 1')
+        self.assertTrue(self.gudang.aktif)
+
+    def test_gudang_str(self):
+        # Test tampilan string gudang
+        self.assertEqual(str(self.gudang), 'Gudang Andir')
+
+    def test_gudang_nonaktif(self):
+        # Test gudang bisa dinonaktifkan
+        self.gudang.aktif = False
+        self.gudang.save()
+        self.assertFalse(self.gudang.aktif)
+
+    def test_gudang_punya_barang(self):
+        # Test relasi gudang ke barang
+        kategori = Kategori.objects.create(nama='Kursi')
+        barang = Barang.objects.create(
+            kode='KR099',
+            nama='Kursi Test',
+            kategori=kategori,
+            gudang=self.gudang,
+            stok_total=5,
+            stok_tersedia=5,
+            harga_sewa=10000,
+            kondisi='baik'
+        )
+        self.assertEqual(barang.gudang.nama, 'Gudang Andir')
+        self.assertEqual(self.gudang.barang.count(), 1)
+
+
+class GudangFormTest(TestCase):
+
+    def test_gudang_form_valid(self):
+        # Test form gudang valid
+        from apps.inventory.views import gudang_create
+        self.gudang = Gudang.objects.create(
+            nama='Gudang Kubang',
+            alamat='Jl. Kubang No. 2',
+            aktif=True
+        )
+        self.assertEqual(self.gudang.nama, 'Gudang Kubang')
+        self.assertTrue(self.gudang.aktif)
+
+    def test_gudang_tanpa_nama_gagal(self):
+        # Test gudang dengan nama kosong tidak valid
+        # CharField di Django izinkan string kosong di DB
+        # tapi kita validasi lewat form/view
+        gudang = Gudang(nama='', alamat='Test')
+        # Validasi via full_clean
+        from django.core.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            gudang.full_clean()
+
+
+class GudangViewTest(TestCase):
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='admin_gudang',
+            password='admin123'
+        )
+        UserProfile.objects.create(user=self.user, role='admin')
+        self.client.login(username='admin_gudang', password='admin123')
+
+        self.gudang = Gudang.objects.create(
+            nama='Gudang Andir',
+            alamat='Jl. Andir No. 1',
+            aktif=True
+        )
+        self.kategori = Kategori.objects.create(nama='Kursi')
+        self.barang = Barang.objects.create(
+            kode='KR100',
+            nama='Kursi Andir',
+            kategori=self.kategori,
+            gudang=self.gudang,
+            stok_total=10,
+            stok_tersedia=10,
+            harga_sewa=10000,
+            kondisi='baik'
+        )
+
+    def test_gudang_list_tampil(self):
+        # Test halaman daftar gudang bisa diakses
+        response = self.client.get(reverse('gudang_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'inventory/gudang_list.html')
+
+    def test_gudang_list_ada_data(self):
+        # Test daftar gudang menampilkan data yang benar
+        response = self.client.get(reverse('gudang_list'))
+        self.assertContains(response, 'Gudang Andir')
+
+    def test_gudang_create_GET(self):
+        # Test halaman form tambah gudang bisa diakses
+        response = self.client.get(reverse('gudang_create'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'inventory/gudang_form.html')
+
+    def test_gudang_create_POST_valid(self):
+        # Test tambah gudang baru berhasil
+        response = self.client.post(reverse('gudang_create'), {
+            'nama': 'Gudang Kubang',
+            'alamat': 'Jl. Kubang No. 2',
+            'keterangan': 'Gudang cabang'
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Gudang.objects.filter(nama='Gudang Kubang').exists())
+
+    def test_gudang_create_POST_tanpa_nama(self):
+        # Test tambah gudang tanpa nama gagal
+        response = self.client.post(reverse('gudang_create'), {
+            'nama': '',
+            'alamat': 'Jl. Kubang No. 2',
+        })
+        # Tetap di halaman form
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Gudang.objects.filter(alamat='Jl. Kubang No. 2').exists())
+
+    def test_gudang_edit(self):
+        # Test edit gudang berhasil
+        response = self.client.post(
+            reverse('gudang_edit', args=[self.gudang.pk]), {
+                'nama': 'Gudang Andir Updated',
+                'alamat': 'Jl. Andir No. 99',
+                'keterangan': '',
+                'aktif': 'on'
+            }
+        )
+        self.assertEqual(response.status_code, 302)
+        self.gudang.refresh_from_db()
+        self.assertEqual(self.gudang.nama, 'Gudang Andir Updated')
+
+    def test_gudang_delete(self):
+        # Test hapus gudang berhasil
+        response = self.client.post(
+            reverse('gudang_delete', args=[self.gudang.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Gudang.objects.filter(pk=self.gudang.pk).exists())
+
+    def test_filter_barang_by_gudang(self):
+        # Test filter barang berdasarkan gudang
+        gudang2 = Gudang.objects.create(
+            nama='Gudang Kubang',
+            alamat='Jl. Kubang No. 2',
+            aktif=True
+        )
+        Barang.objects.create(
+            kode='KR101',
+            nama='Kursi Kubang',
+            kategori=self.kategori,
+            gudang=gudang2,
+            stok_total=5,
+            stok_tersedia=5,
+            harga_sewa=10000,
+            kondisi='baik'
+        )
+
+        # Filter by gudang andir
+        response = self.client.get(
+            reverse('barang_list'),
+            {'gudang': self.gudang.pk}
+        )
+        self.assertContains(response, 'Kursi Andir')
+        self.assertNotContains(response, 'Kursi Kubang')
+
+        # Filter by gudang kubang
+        response = self.client.get(
+            reverse('barang_list'),
+            {'gudang': gudang2.pk}
+        )
+        self.assertContains(response, 'Kursi Kubang')
+        self.assertNotContains(response, 'Kursi Andir')
+
+        # Tanpa filter → semua barang tampil
+        response = self.client.get(reverse('barang_list'))
+        self.assertContains(response, 'Kursi Andir')
+        self.assertContains(response, 'Kursi Kubang')
