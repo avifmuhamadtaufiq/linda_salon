@@ -403,3 +403,104 @@ class GudangIntegrationTest(TestCase):
 
         self.assertEqual(total_andir, 10)
         self.assertEqual(total_kubang, 5)
+
+class PembatalanTransaksiIntegrationTest(TestCase):
+    """Integration test alur pembatalan transaksi"""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='admin_batal_int',
+            password='admin123'
+        )
+        UserProfile.objects.create(user=self.user, role='admin')
+        self.client.login(username='admin_batal_int', password='admin123')
+
+        self.barang1 = Barang.objects.create(
+            kode='BTL001',
+            nama='Barang Batal 1',
+            stok_total=10,
+            stok_tersedia=10,
+            harga_sewa=Decimal('20000'),
+            kondisi='baik'
+        )
+        self.barang2 = Barang.objects.create(
+            kode='BTL002',
+            nama='Barang Batal 2',
+            stok_total=5,
+            stok_tersedia=5,
+            harga_sewa=Decimal('30000'),
+            kondisi='baik'
+        )
+
+    def test_alur_lengkap_pembatalan(self):
+        """
+        Test alur lengkap pembatalan:
+        1. Buat transaksi
+        2. Stok berkurang
+        3. Batalkan dengan alasan
+        4. Stok kembali normal
+        5. Cek semua info pembatalan tersimpan
+        """
+        # Step 1: Buat transaksi
+        transaksi = Transaksi.objects.create(
+            no_transaksi='SW20260506BTLINT',
+            pelanggan_nama='Test Batal Integration',
+            pelanggan_hp='08100000099',
+            tanggal_sewa=datetime.date(2026, 5, 6),
+            tanggal_kembali=datetime.date(2026, 5, 9),
+            uang_muka=Decimal('50000'),
+            total_harga=Decimal('250000'),
+            sisa_bayar=Decimal('200000'),
+            status='aktif',
+            dibuat_oleh=self.user,
+        )
+
+        # Tambah 2 barang
+        detail1 = DetailTransaksi.objects.create(
+            transaksi=transaksi,
+            barang=self.barang1,
+            jumlah=3,
+            jumlah_hari=3,
+            harga_satuan=Decimal('20000'),
+            subtotal=Decimal('180000'),
+        )
+        detail2 = DetailTransaksi.objects.create(
+            transaksi=transaksi,
+            barang=self.barang2,
+            jumlah=1,
+            jumlah_hari=3,
+            harga_satuan=Decimal('30000'),
+            subtotal=Decimal('90000'),
+        )
+
+        # Kurangi stok
+        self.barang1.stok_tersedia -= 3
+        self.barang1.save()
+        self.barang2.stok_tersedia -= 1
+        self.barang2.save()
+
+        # Step 2: Cek stok berkurang
+        self.assertEqual(self.barang1.stok_tersedia, 7)
+        self.assertEqual(self.barang2.stok_tersedia, 4)
+
+        # Step 3: Batalkan transaksi
+        alasan = 'Pelanggan tidak jadi menikah'
+        response = self.client.post(
+            reverse('transaksi_batal', args=[transaksi.pk]),
+            {'alasan_batal': alasan}
+        )
+        self.assertEqual(response.status_code, 302)
+
+        # Step 4: Cek stok kembali normal
+        self.barang1.refresh_from_db()
+        self.barang2.refresh_from_db()
+        self.assertEqual(self.barang1.stok_tersedia, 10)
+        self.assertEqual(self.barang2.stok_tersedia, 5)
+
+        # Step 5: Cek semua info pembatalan tersimpan
+        transaksi.refresh_from_db()
+        self.assertEqual(transaksi.status, 'batal')
+        self.assertEqual(transaksi.alasan_batal, alasan)
+        self.assertEqual(transaksi.dibatalkan_oleh, self.user)
+        self.assertIsNotNone(transaksi.dibatalkan_at)
