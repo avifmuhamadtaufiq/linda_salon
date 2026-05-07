@@ -58,7 +58,7 @@ class TransaksiModelTest(TestCase):
         # Test apakah transaksi tersimpan dengan benar
         self.assertEqual(self.transaksi.no_transaksi, 'SW20260504001')
         self.assertEqual(self.transaksi.pelanggan_nama, 'Siti Rahayu')
-        self.assertEqual(self.transaksi.status, 'aktif')
+        self.assertEqual(self.transaksi.status, 'menunggu')
 
     def test_transaksi_str(self):
         # Test tampilan string transaksi
@@ -182,6 +182,7 @@ class TransaksiViewTest(TestCase):
             uang_muka=Decimal('100000'),
             total_harga=Decimal('200000'),
             sisa_bayar=Decimal('100000'),
+            status='disewa',
             dibuat_oleh=self.user,
         )
 
@@ -331,7 +332,7 @@ class TransaksiBatalViewTest(TestCase):
             uang_muka=Decimal('0'),
             total_harga=Decimal('100000'),
             sisa_bayar=Decimal('100000'),
-            status='aktif',
+            status='menunggu',
             dibuat_oleh=self.admin,
         )
 
@@ -380,7 +381,7 @@ class TransaksiBatalViewTest(TestCase):
 
         # Status transaksi tidak berubah
         self.transaksi.refresh_from_db()
-        self.assertEqual(self.transaksi.status, 'aktif')
+        self.assertEqual(self.transaksi.status, 'menunggu')
 
         # Stok tidak berubah
         self.barang.refresh_from_db()

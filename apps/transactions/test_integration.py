@@ -91,6 +91,7 @@ class AlurSewaLengkapTest(TestCase):
             uang_muka=Decimal('100000'),
             total_harga=Decimal('450000'),
             sisa_bayar=Decimal('350000'),
+            status='disewa',
             dibuat_oleh=self.user,
         )
 
@@ -320,6 +321,7 @@ class GudangIntegrationTest(TestCase):
             tanggal_kembali=datetime.date(2026, 5, 8),
             uang_muka=Decimal('0'),
             total_harga=Decimal('0'),
+            status='disewa', 
             dibuat_oleh=self.user,
         )
 
@@ -452,7 +454,7 @@ class PembatalanTransaksiIntegrationTest(TestCase):
             uang_muka=Decimal('50000'),
             total_harga=Decimal('250000'),
             sisa_bayar=Decimal('200000'),
-            status='aktif',
+            status='menunggu',  
             dibuat_oleh=self.user,
         )
 

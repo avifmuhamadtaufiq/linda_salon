@@ -17,22 +17,36 @@ def dashboard(request):
     total_disewa = total_stok - total_tersedia
 
     today = timezone.now().date()
-    transaksi_aktif = Transaksi.objects.filter(status='aktif').count()
-    transaksi_hari_ini = Transaksi.objects.filter(tanggal_sewa=today).count()
+
+    # Hitung per status
+    trx_menunggu = Transaksi.objects.filter(status='menunggu').count()
+    trx_siap_diambil = Transaksi.objects.filter(status='siap_diambil').count()
+    trx_disewa = Transaksi.objects.filter(status='disewa').count()
+    trx_selesai_hari_ini = Transaksi.objects.filter(
+        status='selesai',
+        tanggal_kembali_aktual=today
+    ).count()
     pengembalian_hari_ini = Transaksi.objects.filter(
-        tanggal_kembali=today, status='aktif'
+        status='disewa',
+        tanggal_kembali=today
     ).count()
 
-    transaksi_terbaru = Transaksi.objects.select_related('pelanggan', 'dibuat_oleh').order_by('-created_at')[:5]
-    barang_low_stock = Barang.objects.filter(stok_tersedia=0, stok_total__gt=0)
+    transaksi_terbaru = Transaksi.objects.select_related(
+        'pelanggan', 'dibuat_oleh'
+    ).order_by('-created_at')[:5]
+    barang_low_stock = Barang.objects.filter(
+        stok_tersedia=0, stok_total__gt=0
+    )
 
     context = {
         'total_barang': total_barang,
         'total_stok': total_stok,
         'total_tersedia': total_tersedia,
         'total_disewa': total_disewa,
-        'transaksi_aktif': transaksi_aktif,
-        'transaksi_hari_ini': transaksi_hari_ini,
+        'trx_menunggu': trx_menunggu,
+        'trx_siap_diambil': trx_siap_diambil,
+        'trx_disewa': trx_disewa,
+        'trx_selesai_hari_ini': trx_selesai_hari_ini,
         'pengembalian_hari_ini': pengembalian_hari_ini,
         'transaksi_terbaru': transaksi_terbaru,
         'barang_low_stock': barang_low_stock,

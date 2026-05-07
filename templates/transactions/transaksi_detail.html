@@ -2,16 +2,33 @@
 {% block title %}{{ transaksi.no_transaksi }}{% endblock %}
 {% block page_title %}Detail Transaksi{% endblock %}
 {% block topbar_actions %}
-{% if transaksi.status == 'aktif' %}
-<a href="{% url 'transaksi_kembali' transaksi.pk %}" class="btn btn-gold btn-sm">
-    <i class="bi bi-arrow-return-left me-1"></i> Proses Pengembalian
-</a>
-<a href="{% url 'transaksi_batal' transaksi.pk %}" class="btn btn-sm"
-    style="background:rgba(220,80,80,0.1); color:#B94040;
-    border:1px solid rgba(220,80,80,0.3); border-radius:8px;
-    padding:7px 16px; font-size:0.87rem;">
-    <i class="bi bi-x-circle me-1"></i> Batalkan
-</a>
+{% if transaksi.status == 'menunggu' %}
+    <a href="{% url 'transaksi_siap_diambil' transaksi.pk %}"
+        class="btn btn-gold btn-sm">
+        <i class="bi bi-box-seam me-1"></i> Siapkan Barang
+    </a>
+    <a href="{% url 'transaksi_batal' transaksi.pk %}" class="btn btn-sm"
+        style="background:rgba(220,80,80,0.1); color:#B94040;
+        border:1px solid rgba(220,80,80,0.3); border-radius:8px;
+        padding:7px 16px; font-size:0.87rem;">
+        <i class="bi bi-x-circle me-1"></i> Batalkan
+    </a>
+{% elif transaksi.status == 'siap_diambil' %}
+    <a href="{% url 'transaksi_disewa' transaksi.pk %}"
+        class="btn btn-gold btn-sm">
+        <i class="bi bi-arrow-up-right-circle me-1"></i> Barang Keluar
+    </a>
+    <a href="{% url 'transaksi_batal' transaksi.pk %}" class="btn btn-sm"
+        style="background:rgba(220,80,80,0.1); color:#B94040;
+        border:1px solid rgba(220,80,80,0.3); border-radius:8px;
+        padding:7px 16px; font-size:0.87rem;">
+        <i class="bi bi-x-circle me-1"></i> Batalkan
+    </a>
+{% elif transaksi.status == 'disewa' %}
+    <a href="{% url 'transaksi_kembali' transaksi.pk %}"
+        class="btn btn-gold btn-sm">
+        <i class="bi bi-arrow-return-left me-1"></i> Proses Pengembalian
+    </a>
 {% endif %}
 {% endblock %}
 {% block content %}
@@ -20,7 +37,37 @@
         <div class="card p-3 mb-3">
             <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted);">No. Transaksi</div>
             <div style="font-family:'Cormorant Garamond',serif; font-size:1.4rem; font-weight:700; color:var(--gold-dark);">{{ transaksi.no_transaksi }}</div>
-            <span class="badge-{{ transaksi.status }} d-inline-block mt-1">{{ transaksi.get_status_display }}</span>
+            {% if transaksi.status == 'menunggu' %}
+                <span style="background:rgba(136,135,128,0.1); color:#5F5E5A;
+                    padding:4px 12px; border-radius:20px; font-size:0.78rem;
+                    display:inline-block; margin-top:6px;">
+                    <i class="bi bi-hourglass me-1"></i> Menunggu
+                </span>
+            {% elif transaksi.status == 'siap_diambil' %}
+                <span style="background:rgba(32,148,137,0.1); color:#20948A;
+                    padding:4px 12px; border-radius:20px; font-size:0.78rem;
+                    display:inline-block; margin-top:6px;">
+                    <i class="bi bi-box-seam me-1"></i> Siap Diambil
+                </span>
+            {% elif transaksi.status == 'disewa' %}
+                <span style="background:rgba(201,168,76,0.1); color:var(--gold-dark);
+                    padding:4px 12px; border-radius:20px; font-size:0.78rem;
+                    display:inline-block; margin-top:6px;">
+                    <i class="bi bi-arrow-up-right-circle me-1"></i> Sedang Disewa
+                </span>
+            {% elif transaksi.status == 'selesai' %}
+                <span style="background:rgba(60,120,200,0.1); color:#3C78C8;
+                    padding:4px 12px; border-radius:20px; font-size:0.78rem;
+                    display:inline-block; margin-top:6px;">
+                    <i class="bi bi-check-circle me-1"></i> Selesai
+                </span>
+            {% elif transaksi.status == 'batal' %}
+                <span style="background:rgba(220,80,80,0.1); color:#B94040;
+                    padding:4px 12px; border-radius:20px; font-size:0.78rem;
+                    display:inline-block; margin-top:6px;">
+                    <i class="bi bi-x-circle me-1"></i> Dibatalkan
+                </span>
+            {% endif %}
             <hr style="border-color:#EDE8DC; margin:12px 0;">
             <div class="mb-2"><div style="font-size:0.75rem; color:var(--muted);">Pelanggan</div><strong>{{ transaksi.pelanggan_nama }}</strong></div>
             <div class="mb-2"><div style="font-size:0.75rem; color:var(--muted);">No. HP</div>{{ transaksi.pelanggan_hp }}</div>

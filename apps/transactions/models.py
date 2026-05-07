@@ -6,8 +6,10 @@ from apps.pelanggan.models import Pelanggan
 
 class Transaksi(models.Model):
     STATUS_CHOICES = [
-        ('aktif', 'Aktif / Sedang Disewa'),
-        ('selesai', 'Selesai / Sudah Dikembalikan'),
+        ('menunggu', 'Menunggu'),
+        ('siap_diambil', 'Siap Diambil'),
+        ('disewa', 'Sedang Disewa'),
+        ('selesai', 'Selesai'),
         ('batal', 'Dibatalkan'),
     ]
     no_transaksi = models.CharField(max_length=50, unique=True)
@@ -19,20 +21,21 @@ class Transaksi(models.Model):
     tanggal_sewa = models.DateField()
     tanggal_kembali = models.DateField()
     tanggal_kembali_aktual = models.DateField(null=True, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='aktif')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='menunggu')
     total_harga = models.DecimalField(max_digits=15, decimal_places=0, default=0)
     uang_muka = models.DecimalField(max_digits=15, decimal_places=0, default=0)
     sisa_bayar = models.DecimalField(max_digits=15, decimal_places=0, default=0)
     catatan = models.TextField(blank=True)
-    dibuat_oleh = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='transaksi')
     alasan_batal = models.TextField(blank=True, null=True)
     dibatalkan_oleh = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
+        User, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='transaksi_dibatalkan'
     )
     dibatalkan_at = models.DateTimeField(null=True, blank=True)
+    dibuat_oleh = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True,
+        related_name='transaksi'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

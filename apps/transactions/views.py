@@ -1,6 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Q
@@ -8,7 +7,6 @@ from django.utils import timezone
 from .models import Transaksi, DetailTransaksi
 from apps.inventory.models import Barang
 from apps.pelanggan.models import Pelanggan
-
 import datetime
 from decimal import Decimal
 
@@ -21,7 +19,6 @@ def generate_no_transaksi():
 
 
 def hitung_jumlah_hari(tanggal_sewa, tanggal_kembali):
-    """Hitung jumlah hari antara tanggal sewa dan kembali, minimal 1 hari"""
     try:
         tgl_sewa = datetime.datetime.strptime(str(tanggal_sewa), '%Y-%m-%d').date()
         tgl_kembali = datetime.datetime.strptime(str(tanggal_kembali), '%Y-%m-%d').date()
@@ -38,7 +35,7 @@ def transaksi_list(request):
     tanggal = request.GET.get('tanggal', '')
     pengguna_id = request.GET.get('pengguna', '')
 
-    transaksi = Transaksi.objects.select_related('pelanggan').all()
+    transaksi = Transaksi.objects.select_related('pelanggan', 'dibuat_oleh').all()
     if q:
         transaksi = transaksi.filter(
             Q(no_transaksi__icontains=q) | Q(pelanggan_nama__icontains=q)
@@ -47,22 +44,21 @@ def transaksi_list(request):
         transaksi = transaksi.filter(status=status)
     if tanggal:
         transaksi = transaksi.filter(tanggal_sewa=tanggal)
-    if pengguna_id:                                
+    if pengguna_id:
         transaksi = transaksi.filter(dibuat_oleh_id=pengguna_id)
 
-    # Ambil semua pengguna untuk dropdown filter
+    from django.contrib.auth.models import User
     pengguna_list = User.objects.filter(
         transaksi__isnull=False
     ).distinct().order_by('first_name')
-
 
     return render(request, 'transactions/transaksi_list.html', {
         'transaksi_list': transaksi,
         'q': q,
         'selected_status': status,
         'tanggal': tanggal,
-        'pengguna_list': pengguna_list,       
-        'selected_pengguna': pengguna_id,     
+        'pengguna_list': pengguna_list,
+        'selected_pengguna': pengguna_id,
     })
 
 
@@ -90,11 +86,8 @@ def transaksi_create(request):
 
                 tanggal_sewa = request.POST['tanggal_sewa']
                 tanggal_kembali = request.POST['tanggal_kembali']
-
-                # Hitung otomatis jumlah hari
                 jumlah_hari = hitung_jumlah_hari(tanggal_sewa, tanggal_kembali)
 
-                # Cek pelanggan
                 pelanggan_id = request.POST.get('pelanggan_id', '')
                 pelanggan_obj = None
 
@@ -130,6 +123,7 @@ def transaksi_create(request):
                     catatan=request.POST.get('catatan', ''),
                     dibuat_oleh=request.user,
                     total_harga=Decimal('0'),
+                    status='menunggu',
                 )
 
                 barang_ids = request.POST.getlist('barang_id')
@@ -145,7 +139,6 @@ def transaksi_create(request):
                         raise ValueError(f"Stok {barang.nama} tidak mencukupi (tersedia: {barang.stok_tersedia})")
 
                     harga_satuan = Decimal(str(barang.harga_sewa))
-                    # Harga = harga/hari x jumlah barang x jumlah hari
                     subtotal = harga_satuan * Decimal(str(jml)) * Decimal(str(jumlah_hari))
 
                     DetailTransaksi.objects.create(
@@ -158,6 +151,7 @@ def transaksi_create(request):
                         kondisi_keluar=request.POST.get(f'kondisi_keluar_{b_id}', 'Baik')
                     )
                     total += subtotal
+                    # Stok langsung dikunci saat menunggu
                     barang.stok_tersedia -= jml
                     barang.save()
 
@@ -169,7 +163,7 @@ def transaksi_create(request):
                     pelanggan_obj.total_transaksi = pelanggan_obj.transaksi_set.count()
                     pelanggan_obj.save()
 
-                messages.success(request, f'Transaksi {no_transaksi} berhasil dibuat. ({jumlah_hari} hari sewa)')
+                messages.success(request, f'Transaksi {no_transaksi} berhasil dibuat.')
                 return redirect('transaksi_detail', pk=trx.pk)
 
         except ValueError as e:
@@ -185,8 +179,47 @@ def transaksi_create(request):
 
 
 @login_required
+def transaksi_siap_diambil(request, pk):
+    """Ubah status dari menunggu ke siap_diambil"""
+    transaksi = get_object_or_404(Transaksi, pk=pk, status='menunggu')
+    if request.method == 'POST':
+        transaksi.status = 'siap_diambil'
+        transaksi.save()
+        messages.success(request, f'Transaksi {transaksi.no_transaksi} siap diambil.')
+        return redirect('transaksi_detail', pk=transaksi.pk)
+    return render(request, 'transactions/transaksi_konfirmasi.html', {
+        'transaksi': transaksi,
+        'aksi': 'siap_diambil',
+        'judul': 'Konfirmasi Siap Diambil',
+        'pesan': 'Barang sudah disiapkan dan siap diambil oleh pelanggan?',
+        'btn_label': 'Ya, Siap Diambil',
+        'btn_color': '#20948A',
+    })
+
+
+@login_required
+def transaksi_disewa(request, pk):
+    """Ubah status dari siap_diambil ke disewa"""
+    transaksi = get_object_or_404(Transaksi, pk=pk, status='siap_diambil')
+    if request.method == 'POST':
+        transaksi.status = 'disewa'
+        transaksi.save()
+        messages.success(request, f'Transaksi {transaksi.no_transaksi} sedang disewa.')
+        return redirect('transaksi_detail', pk=transaksi.pk)
+    return render(request, 'transactions/transaksi_konfirmasi.html', {
+        'transaksi': transaksi,
+        'aksi': 'disewa',
+        'judul': 'Konfirmasi Barang Keluar',
+        'pesan': 'Barang sudah diambil dan keluar dari gudang?',
+        'btn_label': 'Ya, Barang Sudah Keluar',
+        'btn_color': '#C9A84C',
+    })
+
+
+@login_required
 def transaksi_kembali(request, pk):
-    transaksi = get_object_or_404(Transaksi, pk=pk, status='aktif')
+    """Ubah status dari disewa ke selesai"""
+    transaksi = get_object_or_404(Transaksi, pk=pk, status='disewa')
     if request.method == 'POST':
         with transaction.atomic():
             for detail in transaksi.detail.select_related('barang'):
@@ -198,7 +231,7 @@ def transaksi_kembali(request, pk):
             transaksi.status = 'selesai'
             transaksi.tanggal_kembali_aktual = timezone.now().date()
             transaksi.save()
-        messages.success(request, f'Pengembalian transaksi {transaksi.no_transaksi} berhasil dicatat.')
+        messages.success(request, f'Transaksi {transaksi.no_transaksi} selesai.')
         return redirect('transaksi_detail', pk=transaksi.pk)
 
     return render(request, 'transactions/transaksi_kembali.html', {
@@ -208,29 +241,14 @@ def transaksi_kembali(request, pk):
 
 
 @login_required
-def jadwal_view(request):
-    today = timezone.now().date()
-    transaksi_aktif = Transaksi.objects.filter(status='aktif').order_by('tanggal_kembali')
-    pengembalian_terlambat = transaksi_aktif.filter(tanggal_kembali__lt=today)
-    pengembalian_hari_ini = transaksi_aktif.filter(tanggal_kembali=today)
-    akan_datang = transaksi_aktif.filter(tanggal_kembali__gt=today)
-
-    return render(request, 'transactions/jadwal.html', {
-        'pengembalian_terlambat': pengembalian_terlambat,
-        'pengembalian_hari_ini': pengembalian_hari_ini,
-        'akan_datang': akan_datang,
-        'today': today,
-    })
-
-
-@login_required
 def transaksi_batal(request, pk):
-    transaksi = get_object_or_404(Transaksi, pk=pk, status='aktif')
+    """Batalkan transaksi dari status menunggu atau siap_diambil"""
+    transaksi = get_object_or_404(
+        Transaksi, pk=pk, status__in=['menunggu', 'siap_diambil']
+    )
 
     if request.method == 'POST':
         alasan = request.POST.get('alasan_batal', '').strip()
-
-        # Alasan wajib diisi
         if not alasan:
             messages.error(request, 'Alasan pembatalan wajib diisi.')
             return render(request, 'transactions/transaksi_batal.html', {
@@ -239,24 +257,40 @@ def transaksi_batal(request, pk):
             })
 
         with transaction.atomic():
-            # Kembalikan stok barang
             for detail in transaksi.detail.select_related('barang'):
                 detail.barang.stok_tersedia += detail.jumlah
                 detail.barang.save()
 
-            # Update status transaksi
             transaksi.status = 'batal'
             transaksi.alasan_batal = alasan
             transaksi.dibatalkan_oleh = request.user
             transaksi.dibatalkan_at = timezone.now()
             transaksi.save()
 
-        messages.success(
-            request,
-            f'Transaksi {transaksi.no_transaksi} berhasil dibatalkan.'
-        )
+        messages.success(request, f'Transaksi {transaksi.no_transaksi} dibatalkan.')
         return redirect('transaksi_detail', pk=transaksi.pk)
 
     return render(request, 'transactions/transaksi_batal.html', {
         'transaksi': transaksi,
+    })
+
+
+@login_required
+def jadwal_view(request):
+    today = timezone.now().date()
+
+    menunggu = Transaksi.objects.filter(status='menunggu').order_by('tanggal_sewa')
+    siap_diambil = Transaksi.objects.filter(status='siap_diambil').order_by('tanggal_sewa')
+    disewa = Transaksi.objects.filter(status='disewa').order_by('tanggal_kembali')
+    terlambat = disewa.filter(tanggal_kembali__lt=today)
+    kembali_hari_ini = disewa.filter(tanggal_kembali=today)
+    akan_datang = disewa.filter(tanggal_kembali__gt=today)
+
+    return render(request, 'transactions/jadwal.html', {
+        'menunggu': menunggu,
+        'siap_diambil': siap_diambil,
+        'terlambat': terlambat,
+        'kembali_hari_ini': kembali_hari_ini,
+        'akan_datang': akan_datang,
+        'today': today,
     })

@@ -12,7 +12,9 @@
 <div class="row g-3 mb-4">
     <div class="col-md-3 col-6">
         <div class="stat-card">
-            <div class="stat-icon bg-gold"><i class="bi bi-box-seam"></i></div>
+            <div class="stat-icon bg-gold">
+                <i class="bi bi-box-seam"></i>
+            </div>
             <div>
                 <div class="stat-value">{{ total_barang }}</div>
                 <div class="stat-label">Jenis Barang</div>
@@ -21,7 +23,9 @@
     </div>
     <div class="col-md-3 col-6">
         <div class="stat-card">
-            <div class="stat-icon bg-teal"><i class="bi bi-check2-circle"></i></div>
+            <div class="stat-icon bg-teal">
+                <i class="bi bi-check2-circle"></i>
+            </div>
             <div>
                 <div class="stat-value">{{ total_tersedia }}</div>
                 <div class="stat-label">Stok Tersedia</div>
@@ -30,7 +34,9 @@
     </div>
     <div class="col-md-3 col-6">
         <div class="stat-card">
-            <div class="stat-icon bg-rose"><i class="bi bi-arrow-up-right-circle"></i></div>
+            <div class="stat-icon bg-rose">
+                <i class="bi bi-arrow-up-right-circle"></i>
+            </div>
             <div>
                 <div class="stat-value">{{ total_disewa }}</div>
                 <div class="stat-label">Sedang Disewa</div>
@@ -39,12 +45,82 @@
     </div>
     <div class="col-md-3 col-6">
         <div class="stat-card">
-            <div class="stat-icon bg-blue"><i class="bi bi-receipt"></i></div>
+            <div class="stat-icon bg-blue">
+                <i class="bi bi-calendar-check"></i>
+            </div>
             <div>
-                <div class="stat-value">{{ transaksi_aktif }}</div>
-                <div class="stat-label">Transaksi Aktif</div>
+                <div class="stat-value">{{ pengembalian_hari_ini }}</div>
+                <div class="stat-label">Kembali Hari Ini</div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Status Transaksi -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6">
+        <a href="{% url 'jadwal' %}" style="text-decoration:none;">
+            <div style="background:white; border:1px solid #EDE8DC;
+                border-radius:12px; padding:16px; text-align:center;">
+                <div style="font-size:1.8rem; font-weight:700;
+                    font-family:'Cormorant Garamond',serif;
+                    color:#5F5E5A;">
+                    {{ trx_menunggu }}
+                </div>
+                <div style="font-size:0.78rem; color:var(--muted);">
+                    <i class="bi bi-hourglass me-1"></i>Menunggu
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-3 col-6">
+        <a href="{% url 'jadwal' %}" style="text-decoration:none;">
+            <div style="background:white; border:1px solid #EDE8DC;
+                border-radius:12px; padding:16px; text-align:center;">
+                <div style="font-size:1.8rem; font-weight:700;
+                    font-family:'Cormorant Garamond',serif;
+                    color:#20948A;">
+                    {{ trx_siap_diambil }}
+                </div>
+                <div style="font-size:0.78rem; color:var(--muted);">
+                    <i class="bi bi-box-seam me-1"></i>Siap Diambil
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-3 col-6">
+        <a href="{% url 'transaksi_list' %}?status=disewa"
+            style="text-decoration:none;">
+            <div style="background:white; border:1px solid #EDE8DC;
+                border-radius:12px; padding:16px; text-align:center;">
+                <div style="font-size:1.8rem; font-weight:700;
+                    font-family:'Cormorant Garamond',serif;
+                    color:var(--gold-dark);">
+                    {{ trx_disewa }}
+                </div>
+                <div style="font-size:0.78rem; color:var(--muted);">
+                    <i class="bi bi-arrow-up-right-circle me-1"></i>
+                    Sedang Disewa
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-3 col-6">
+        <a href="{% url 'transaksi_list' %}?status=selesai"
+            style="text-decoration:none;">
+            <div style="background:white; border:1px solid #EDE8DC;
+                border-radius:12px; padding:16px; text-align:center;">
+                <div style="font-size:1.8rem; font-weight:700;
+                    font-family:'Cormorant Garamond',serif;
+                    color:#3C78C8;">
+                    {{ trx_selesai_hari_ini }}
+                </div>
+                <div style="font-size:0.78rem; color:var(--muted);">
+                    <i class="bi bi-check-circle me-1"></i>
+                    Selesai Hari Ini
+                </div>
+            </div>
+        </a>
     </div>
 </div>
 
