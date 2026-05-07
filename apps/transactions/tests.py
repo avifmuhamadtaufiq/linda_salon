@@ -467,3 +467,218 @@ class TransaksiBatalViewTest(TestCase):
         )
         self.transaksi.refresh_from_db()
         self.assertIsNotNone(self.transaksi.dibatalkan_at)
+
+class StatusTransaksiViewTest(TestCase):
+    """Test alur perubahan status transaksi"""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='admin_status',
+            password='admin123'
+        )
+        UserProfile.objects.create(user=self.user, role='admin')
+        self.client.login(username='admin_status', password='admin123')
+
+        self.barang = Barang.objects.create(
+            kode='ST001',
+            nama='Barang Status Test',
+            stok_total=10,
+            stok_tersedia=10,
+            harga_sewa=Decimal('20000'),
+            kondisi='baik'
+        )
+
+        # Transaksi awal status menunggu
+        self.transaksi = Transaksi.objects.create(
+            no_transaksi='SW20260507ST1',
+            pelanggan_nama='Test Status',
+            pelanggan_hp='08100000002',
+            tanggal_sewa=datetime.date(2026, 5, 7),
+            tanggal_kembali=datetime.date(2026, 5, 9),
+            uang_muka=Decimal('0'),
+            total_harga=Decimal('80000'),
+            sisa_bayar=Decimal('80000'),
+            status='menunggu',
+            dibuat_oleh=self.user,
+        )
+        self.detail = DetailTransaksi.objects.create(
+            transaksi=self.transaksi,
+            barang=self.barang,
+            jumlah=2,
+            jumlah_hari=2,
+            harga_satuan=Decimal('20000'),
+            subtotal=Decimal('80000'),
+        )
+        # Stok sudah dikunci saat menunggu
+        self.barang.stok_tersedia -= 2
+        self.barang.save()
+
+    def test_status_awal_adalah_menunggu(self):
+        """Test transaksi baru selalu status menunggu"""
+        self.assertEqual(self.transaksi.status, 'menunggu')
+
+    def test_menunggu_ke_siap_diambil(self):
+        """Test ubah status dari menunggu ke siap diambil"""
+        response = self.client.post(
+            reverse('transaksi_siap_diambil', args=[self.transaksi.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+        self.transaksi.refresh_from_db()
+        self.assertEqual(self.transaksi.status, 'siap_diambil')
+
+    def test_siap_diambil_ke_disewa(self):
+        """Test ubah status dari siap diambil ke disewa"""
+        self.transaksi.status = 'siap_diambil'
+        self.transaksi.save()
+
+        response = self.client.post(
+            reverse('transaksi_disewa', args=[self.transaksi.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+        self.transaksi.refresh_from_db()
+        self.assertEqual(self.transaksi.status, 'disewa')
+
+    def test_disewa_ke_selesai(self):
+        """Test ubah status dari disewa ke selesai"""
+        self.transaksi.status = 'disewa'
+        self.transaksi.save()
+
+        response = self.client.post(
+            reverse('transaksi_kembali', args=[self.transaksi.pk]),
+            {f'kondisi_kembali_{self.detail.pk}': 'Baik'}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.transaksi.refresh_from_db()
+        self.assertEqual(self.transaksi.status, 'selesai')
+
+    def test_tidak_bisa_skip_menunggu_ke_disewa(self):
+        """Test tidak bisa langsung dari menunggu ke disewa"""
+        # Status masih menunggu, coba akses transaksi_disewa
+        response = self.client.post(
+            reverse('transaksi_disewa', args=[self.transaksi.pk])
+        )
+        # Harus 404 karena filter status='siap_diambil'
+        self.assertEqual(response.status_code, 404)
+        self.transaksi.refresh_from_db()
+        self.assertEqual(self.transaksi.status, 'menunggu')
+
+    def test_tidak_bisa_kembali_dari_menunggu(self):
+        """Test tidak bisa proses kembali dari status menunggu"""
+        response = self.client.post(
+            reverse('transaksi_kembali', args=[self.transaksi.pk]),
+            {f'kondisi_kembali_{self.detail.pk}': 'Baik'}
+        )
+        self.assertEqual(response.status_code, 404)
+        self.transaksi.refresh_from_db()
+        self.assertEqual(self.transaksi.status, 'menunggu')
+
+    def test_tidak_bisa_kembali_dari_siap_diambil(self):
+        """Test tidak bisa proses kembali dari status siap diambil"""
+        self.transaksi.status = 'siap_diambil'
+        self.transaksi.save()
+
+        response = self.client.post(
+            reverse('transaksi_kembali', args=[self.transaksi.pk]),
+            {f'kondisi_kembali_{self.detail.pk}': 'Baik'}
+        )
+        self.assertEqual(response.status_code, 404)
+        self.transaksi.refresh_from_db()
+        self.assertEqual(self.transaksi.status, 'siap_diambil')
+
+    def test_batal_dari_menunggu(self):
+        """Test bisa batalkan dari status menunggu"""
+        response = self.client.post(
+            reverse('transaksi_batal', args=[self.transaksi.pk]),
+            {'alasan_batal': 'Dibatalkan dari menunggu'}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.transaksi.refresh_from_db()
+        self.assertEqual(self.transaksi.status, 'batal')
+
+        # Stok kembali normal
+        self.barang.refresh_from_db()
+        self.assertEqual(self.barang.stok_tersedia, 10)
+
+    def test_batal_dari_siap_diambil(self):
+        """Test bisa batalkan dari status siap diambil"""
+        self.transaksi.status = 'siap_diambil'
+        self.transaksi.save()
+
+        response = self.client.post(
+            reverse('transaksi_batal', args=[self.transaksi.pk]),
+            {'alasan_batal': 'Dibatalkan dari siap diambil'}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.transaksi.refresh_from_db()
+        self.assertEqual(self.transaksi.status, 'batal')
+
+        # Stok kembali normal
+        self.barang.refresh_from_db()
+        self.assertEqual(self.barang.stok_tersedia, 10)
+
+    def test_tidak_bisa_batal_dari_disewa(self):
+        """Test tidak bisa batalkan dari status disewa"""
+        self.transaksi.status = 'disewa'
+        self.transaksi.save()
+
+        response = self.client.post(
+            reverse('transaksi_batal', args=[self.transaksi.pk]),
+            {'alasan_batal': 'Coba batalkan dari disewa'}
+        )
+        # Harus 404 karena filter status__in=['menunggu', 'siap_diambil']
+        self.assertEqual(response.status_code, 404)
+        self.transaksi.refresh_from_db()
+        self.assertEqual(self.transaksi.status, 'disewa')
+
+    def test_tidak_bisa_batal_dari_selesai(self):
+        """Test tidak bisa batalkan dari status selesai"""
+        self.transaksi.status = 'selesai'
+        self.transaksi.save()
+
+        response = self.client.post(
+            reverse('transaksi_batal', args=[self.transaksi.pk]),
+            {'alasan_batal': 'Coba batalkan dari selesai'}
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_stok_dikunci_saat_menunggu(self):
+        """Test stok sudah berkurang saat status menunggu"""
+        self.barang.refresh_from_db()
+        self.assertEqual(self.barang.stok_tersedia, 8)
+        self.assertEqual(self.barang.stok_disewa, 2)
+
+    def test_stok_kembali_saat_selesai(self):
+        """Test stok kembali normal saat selesai"""
+        self.transaksi.status = 'disewa'
+        self.transaksi.save()
+
+        self.client.post(
+            reverse('transaksi_kembali', args=[self.transaksi.pk]),
+            {f'kondisi_kembali_{self.detail.pk}': 'Baik'}
+        )
+        self.barang.refresh_from_db()
+        self.assertEqual(self.barang.stok_tersedia, 10)
+
+    def test_halaman_konfirmasi_siap_diambil_tampil(self):
+        """Test halaman konfirmasi siap diambil bisa diakses"""
+        response = self.client.get(
+            reverse('transaksi_siap_diambil', args=[self.transaksi.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(
+            response, 'transactions/transaksi_konfirmasi.html'
+        )
+
+    def test_halaman_konfirmasi_disewa_tampil(self):
+        """Test halaman konfirmasi disewa bisa diakses"""
+        self.transaksi.status = 'siap_diambil'
+        self.transaksi.save()
+
+        response = self.client.get(
+            reverse('transaksi_disewa', args=[self.transaksi.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(
+            response, 'transactions/transaksi_konfirmasi.html'
+        )

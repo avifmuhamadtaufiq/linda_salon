@@ -506,3 +506,191 @@ class PembatalanTransaksiIntegrationTest(TestCase):
         self.assertEqual(transaksi.alasan_batal, alasan)
         self.assertEqual(transaksi.dibatalkan_oleh, self.user)
         self.assertIsNotNone(transaksi.dibatalkan_at)
+
+class AlurStatusLengkapTest(TestCase):
+    """
+    Integration test alur status lengkap:
+    menunggu → siap_diambil → disewa → selesai
+    """
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='admin_alur_status',
+            password='admin123'
+        )
+        UserProfile.objects.create(user=self.user, role='admin')
+        self.client.login(username='admin_alur_status', password='admin123')
+
+        self.barang = Barang.objects.create(
+            kode='AL001',
+            nama='Barang Alur Test',
+            stok_total=10,
+            stok_tersedia=10,
+            harga_sewa=Decimal('25000'),
+            kondisi='baik'
+        )
+
+    def test_alur_lengkap_menunggu_sampai_selesai(self):
+        """
+        Test alur lengkap:
+        1. Buat transaksi → status menunggu, stok dikunci
+        2. Siapkan barang → status siap_diambil
+        3. Barang keluar → status disewa
+        4. Barang kembali → status selesai, stok kembali
+        """
+        pelanggan = Pelanggan.objects.create(
+            nama='Test Alur Status',
+            hp='08100000099'
+        )
+
+        # Step 1: Buat transaksi
+        transaksi = Transaksi.objects.create(
+            no_transaksi='SW20260507ALUR',
+            pelanggan=pelanggan,
+            pelanggan_nama=pelanggan.nama,
+            pelanggan_hp=pelanggan.hp,
+            tanggal_sewa=datetime.date(2026, 5, 7),
+            tanggal_kembali=datetime.date(2026, 5, 10),
+            uang_muka=Decimal('50000'),
+            total_harga=Decimal('150000'),
+            sisa_bayar=Decimal('100000'),
+            status='menunggu',
+            dibuat_oleh=self.user,
+        )
+        detail = DetailTransaksi.objects.create(
+            transaksi=transaksi,
+            barang=self.barang,
+            jumlah=2,
+            jumlah_hari=3,
+            harga_satuan=Decimal('25000'),
+            subtotal=Decimal('150000'),
+        )
+        # Stok dikunci
+        self.barang.stok_tersedia -= 2
+        self.barang.save()
+
+        # Cek stok sudah dikunci
+        self.barang.refresh_from_db()
+        self.assertEqual(self.barang.stok_tersedia, 8)
+        self.assertEqual(transaksi.status, 'menunggu')
+
+        # Step 2: Siapkan barang
+        response = self.client.post(
+            reverse('transaksi_siap_diambil', args=[transaksi.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+        transaksi.refresh_from_db()
+        self.assertEqual(transaksi.status, 'siap_diambil')
+
+        # Stok tidak berubah
+        self.barang.refresh_from_db()
+        self.assertEqual(self.barang.stok_tersedia, 8)
+
+        # Step 3: Barang keluar
+        response = self.client.post(
+            reverse('transaksi_disewa', args=[transaksi.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+        transaksi.refresh_from_db()
+        self.assertEqual(transaksi.status, 'disewa')
+
+        # Stok tidak berubah
+        self.barang.refresh_from_db()
+        self.assertEqual(self.barang.stok_tersedia, 8)
+
+        # Step 4: Barang kembali
+        response = self.client.post(
+            reverse('transaksi_kembali', args=[transaksi.pk]),
+            {f'kondisi_kembali_{detail.pk}': 'Baik'}
+        )
+        self.assertEqual(response.status_code, 302)
+        transaksi.refresh_from_db()
+        self.assertEqual(transaksi.status, 'selesai')
+
+        # Stok kembali normal
+        self.barang.refresh_from_db()
+        self.assertEqual(self.barang.stok_tersedia, 10)
+
+        # Tanggal kembali aktual tersimpan
+        self.assertIsNotNone(transaksi.tanggal_kembali_aktual)
+
+    def test_alur_batal_dari_menunggu(self):
+        """Test batalkan dari menunggu → stok kembali"""
+        transaksi = Transaksi.objects.create(
+            no_transaksi='SW20260507BTL1',
+            pelanggan_nama='Test Batal Menunggu',
+            pelanggan_hp='08100000098',
+            tanggal_sewa=datetime.date(2026, 5, 7),
+            tanggal_kembali=datetime.date(2026, 5, 9),
+            uang_muka=Decimal('0'),
+            total_harga=Decimal('50000'),
+            sisa_bayar=Decimal('50000'),
+            status='menunggu',
+            dibuat_oleh=self.user,
+        )
+        detail = DetailTransaksi.objects.create(
+            transaksi=transaksi,
+            barang=self.barang,
+            jumlah=3,
+            jumlah_hari=1,
+            harga_satuan=Decimal('25000'),
+            subtotal=Decimal('75000'),
+        )
+        self.barang.stok_tersedia -= 3
+        self.barang.save()
+
+        # Cek stok dikunci
+        self.barang.refresh_from_db()
+        self.assertEqual(self.barang.stok_tersedia, 7)
+
+        # Batalkan
+        response = self.client.post(
+            reverse('transaksi_batal', args=[transaksi.pk]),
+            {'alasan_batal': 'Test batal dari menunggu'}
+        )
+        self.assertEqual(response.status_code, 302)
+        transaksi.refresh_from_db()
+        self.assertEqual(transaksi.status, 'batal')
+
+        # Stok kembali
+        self.barang.refresh_from_db()
+        self.assertEqual(self.barang.stok_tersedia, 10)
+
+    def test_alur_batal_dari_siap_diambil(self):
+        """Test batalkan dari siap diambil → stok kembali"""
+        transaksi = Transaksi.objects.create(
+            no_transaksi='SW20260507BTL2',
+            pelanggan_nama='Test Batal Siap Diambil',
+            pelanggan_hp='08100000097',
+            tanggal_sewa=datetime.date(2026, 5, 7),
+            tanggal_kembali=datetime.date(2026, 5, 9),
+            uang_muka=Decimal('0'),
+            total_harga=Decimal('50000'),
+            sisa_bayar=Decimal('50000'),
+            status='siap_diambil',
+            dibuat_oleh=self.user,
+        )
+        detail = DetailTransaksi.objects.create(
+            transaksi=transaksi,
+            barang=self.barang,
+            jumlah=2,
+            jumlah_hari=1,
+            harga_satuan=Decimal('25000'),
+            subtotal=Decimal('50000'),
+        )
+        self.barang.stok_tersedia -= 2
+        self.barang.save()
+
+        # Batalkan dari siap diambil
+        response = self.client.post(
+            reverse('transaksi_batal', args=[transaksi.pk]),
+            {'alasan_batal': 'Test batal dari siap diambil'}
+        )
+        self.assertEqual(response.status_code, 302)
+        transaksi.refresh_from_db()
+        self.assertEqual(transaksi.status, 'batal')
+
+        # Stok kembali
+        self.barang.refresh_from_db()
+        self.assertEqual(self.barang.stok_tersedia, 10)
