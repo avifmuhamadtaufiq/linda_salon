@@ -10,6 +10,15 @@ from apps.pelanggan.models import Pelanggan
 import datetime
 from decimal import Decimal
 
+def cek_akses_transaksi(user, transaksi):
+    """
+    Cek apakah user punya akses untuk proses transaksi.
+    Admin bisa akses semua, karyawan hanya transaksi sendiri.
+    """
+    if user.profile.role == 'admin':
+        return True
+    return transaksi.dibuat_oleh == user
+
 
 def generate_no_transaksi():
     today = datetime.date.today()
@@ -180,8 +189,13 @@ def transaksi_create(request):
 
 @login_required
 def transaksi_siap_diambil(request, pk):
-    """Ubah status dari menunggu ke siap_diambil"""
     transaksi = get_object_or_404(Transaksi, pk=pk, status='menunggu')
+
+    # Cek akses
+    if not cek_akses_transaksi(request.user, transaksi):
+        messages.error(request, 'Anda tidak memiliki akses untuk memproses transaksi ini.')
+        return redirect('transaksi_detail', pk=transaksi.pk)
+
     if request.method == 'POST':
         transaksi.status = 'siap_diambil'
         transaksi.save()
@@ -199,8 +213,13 @@ def transaksi_siap_diambil(request, pk):
 
 @login_required
 def transaksi_disewa(request, pk):
-    """Ubah status dari siap_diambil ke disewa"""
     transaksi = get_object_or_404(Transaksi, pk=pk, status='siap_diambil')
+
+    # Cek akses
+    if not cek_akses_transaksi(request.user, transaksi):
+        messages.error(request, 'Anda tidak memiliki akses untuk memproses transaksi ini.')
+        return redirect('transaksi_detail', pk=transaksi.pk)
+
     if request.method == 'POST':
         transaksi.status = 'disewa'
         transaksi.save()
@@ -218,8 +237,13 @@ def transaksi_disewa(request, pk):
 
 @login_required
 def transaksi_kembali(request, pk):
-    """Ubah status dari disewa ke selesai"""
     transaksi = get_object_or_404(Transaksi, pk=pk, status='disewa')
+
+    # Cek akses
+    if not cek_akses_transaksi(request.user, transaksi):
+        messages.error(request, 'Anda tidak memiliki akses untuk memproses transaksi ini.')
+        return redirect('transaksi_detail', pk=transaksi.pk)
+
     if request.method == 'POST':
         with transaction.atomic():
             for detail in transaksi.detail.select_related('barang'):
@@ -242,10 +266,14 @@ def transaksi_kembali(request, pk):
 
 @login_required
 def transaksi_batal(request, pk):
-    """Batalkan transaksi dari status menunggu atau siap_diambil"""
     transaksi = get_object_or_404(
         Transaksi, pk=pk, status__in=['menunggu', 'siap_diambil']
     )
+
+    # Cek akses
+    if not cek_akses_transaksi(request.user, transaksi):
+        messages.error(request, 'Anda tidak memiliki akses untuk membatalkan transaksi ini.')
+        return redirect('transaksi_detail', pk=transaksi.pk)
 
     if request.method == 'POST':
         alasan = request.POST.get('alasan_batal', '').strip()
@@ -260,7 +288,6 @@ def transaksi_batal(request, pk):
             for detail in transaksi.detail.select_related('barang'):
                 detail.barang.stok_tersedia += detail.jumlah
                 detail.barang.save()
-
             transaksi.status = 'batal'
             transaksi.alasan_batal = alasan
             transaksi.dibatalkan_oleh = request.user

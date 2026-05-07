@@ -2,33 +2,46 @@
 {% block title %}{{ transaksi.no_transaksi }}{% endblock %}
 {% block page_title %}Detail Transaksi{% endblock %}
 {% block topbar_actions %}
-{% if transaksi.status == 'menunggu' %}
-    <a href="{% url 'transaksi_siap_diambil' transaksi.pk %}"
-        class="btn btn-gold btn-sm">
-        <i class="bi bi-box-seam me-1"></i> Siapkan Barang
-    </a>
-    <a href="{% url 'transaksi_batal' transaksi.pk %}" class="btn btn-sm"
-        style="background:rgba(220,80,80,0.1); color:#B94040;
-        border:1px solid rgba(220,80,80,0.3); border-radius:8px;
-        padding:7px 16px; font-size:0.87rem;">
-        <i class="bi bi-x-circle me-1"></i> Batalkan
-    </a>
-{% elif transaksi.status == 'siap_diambil' %}
-    <a href="{% url 'transaksi_disewa' transaksi.pk %}"
-        class="btn btn-gold btn-sm">
-        <i class="bi bi-arrow-up-right-circle me-1"></i> Barang Keluar
-    </a>
-    <a href="{% url 'transaksi_batal' transaksi.pk %}" class="btn btn-sm"
-        style="background:rgba(220,80,80,0.1); color:#B94040;
-        border:1px solid rgba(220,80,80,0.3); border-radius:8px;
-        padding:7px 16px; font-size:0.87rem;">
-        <i class="bi bi-x-circle me-1"></i> Batalkan
-    </a>
-{% elif transaksi.status == 'disewa' %}
-    <a href="{% url 'transaksi_kembali' transaksi.pk %}"
-        class="btn btn-gold btn-sm">
-        <i class="bi bi-arrow-return-left me-1"></i> Proses Pengembalian
-    </a>
+{% if request.user.profile.role == 'admin' or transaksi.dibuat_oleh == request.user %}
+    {% if transaksi.status == 'menunggu' %}
+        <a href="{% url 'transaksi_siap_diambil' transaksi.pk %}"
+            class="btn btn-gold btn-sm">
+            <i class="bi bi-box-seam me-1"></i> Siapkan Barang
+        </a>
+        <a href="{% url 'transaksi_batal' transaksi.pk %}" class="btn btn-sm"
+            style="background:rgba(220,80,80,0.1); color:#B94040;
+            border:1px solid rgba(220,80,80,0.3); border-radius:8px;
+            padding:7px 16px; font-size:0.87rem;">
+            <i class="bi bi-x-circle me-1"></i> Batalkan
+        </a>
+
+    {% elif transaksi.status == 'siap_diambil' %}
+        <a href="{% url 'transaksi_disewa' transaksi.pk %}"
+            class="btn btn-gold btn-sm">
+            <i class="bi bi-arrow-up-right-circle me-1"></i> Barang Keluar
+        </a>
+        <a href="{% url 'transaksi_batal' transaksi.pk %}" class="btn btn-sm"
+            style="background:rgba(220,80,80,0.1); color:#B94040;
+            border:1px solid rgba(220,80,80,0.3); border-radius:8px;
+            padding:7px 16px; font-size:0.87rem;">
+            <i class="bi bi-x-circle me-1"></i> Batalkan
+        </a>
+
+    {% elif transaksi.status == 'disewa' %}
+        <a href="{% url 'transaksi_kembali' transaksi.pk %}"
+            class="btn btn-gold btn-sm">
+            <i class="bi bi-arrow-return-left me-1"></i> Proses Pengembalian
+        </a>
+    {% endif %}
+
+{% else %}
+    <!-- Karyawan bukan pembuat transaksi - tampilkan info -->
+    <span style="font-size:0.83rem; color:var(--muted);
+        background:#FAF7F0; padding:7px 14px; border-radius:8px;
+        border:1px solid #EDE8DC;">
+        <i class="bi bi-info-circle me-1"></i>
+        Dibuat oleh {{ transaksi.dibuat_oleh.get_full_name|default:transaksi.dibuat_oleh.username }}
+    </span>
 {% endif %}
 {% endblock %}
 {% block content %}

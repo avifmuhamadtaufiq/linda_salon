@@ -362,10 +362,23 @@ class TransaksiBatalViewTest(TestCase):
         )
 
     def test_halaman_batal_tampil_karyawan(self):
-        """Test karyawan juga bisa akses halaman batalkan transaksi"""
+        """Test karyawan bisa akses halaman batalkan transaksi miliknya sendiri"""
+        # Buat transaksi milik karyawan
+        transaksi_karyawan = Transaksi.objects.create(
+            no_transaksi='SW20260506KRYW',
+            pelanggan_nama='Pelanggan Karyawan',
+            pelanggan_hp='08100000003',
+            tanggal_sewa=datetime.date(2026, 5, 6),
+            tanggal_kembali=datetime.date(2026, 5, 8),
+            uang_muka=Decimal('0'),
+            total_harga=Decimal('100000'),
+            sisa_bayar=Decimal('100000'),
+            status='menunggu',
+            dibuat_oleh=self.karyawan,  # milik karyawan
+        )
         self.client.login(username='karyawan_batal', password='karyawan123')
         response = self.client.get(
-            reverse('transaksi_batal', args=[self.transaksi.pk])
+            reverse('transaksi_batal', args=[transaksi_karyawan.pk])
         )
         self.assertEqual(response.status_code, 200)
 
@@ -415,24 +428,39 @@ class TransaksiBatalViewTest(TestCase):
         self.assertEqual(self.barang.stok_tersedia, 10)
 
     def test_batal_dengan_alasan_berhasil_karyawan(self):
-        """Test karyawan bisa batalkan transaksi dengan alasan"""
+        """Test karyawan bisa batalkan transaksi miliknya sendiri"""
+        # Buat transaksi milik karyawan
+        transaksi_karyawan = Transaksi.objects.create(
+            no_transaksi='SW20260506KRYW2',
+            pelanggan_nama='Pelanggan Karyawan 2',
+            pelanggan_hp='08100000004',
+            tanggal_sewa=datetime.date(2026, 5, 6),
+            tanggal_kembali=datetime.date(2026, 5, 8),
+            uang_muka=Decimal('0'),
+            total_harga=Decimal('100000'),
+            sisa_bayar=Decimal('100000'),
+            status='menunggu',
+            dibuat_oleh=self.karyawan,  # milik karyawan
+        )
+        DetailTransaksi.objects.create(
+            transaksi=transaksi_karyawan,
+            barang=self.barang,
+            jumlah=1,
+            jumlah_hari=1,
+            harga_satuan=Decimal('50000'),
+            subtotal=Decimal('50000'),
+        )
+
         self.client.login(username='karyawan_batal', password='karyawan123')
         response = self.client.post(
-            reverse('transaksi_batal', args=[self.transaksi.pk]),
+            reverse('transaksi_batal', args=[transaksi_karyawan.pk]),
             {'alasan_batal': 'Barang tidak tersedia sesuai permintaan'}
         )
         self.assertEqual(response.status_code, 302)
 
-        # Status berubah jadi batal
-        self.transaksi.refresh_from_db()
-        self.assertEqual(self.transaksi.status, 'batal')
-
-        # Dibatalkan oleh karyawan
-        self.assertEqual(self.transaksi.dibatalkan_oleh, self.karyawan)
-
-        # Stok kembali normal
-        self.barang.refresh_from_db()
-        self.assertEqual(self.barang.stok_tersedia, 10)
+        transaksi_karyawan.refresh_from_db()
+        self.assertEqual(transaksi_karyawan.status, 'batal')
+        self.assertEqual(transaksi_karyawan.dibatalkan_oleh, self.karyawan)
 
     def test_transaksi_selesai_tidak_bisa_dibatalkan(self):
         """Test transaksi yang sudah selesai tidak bisa dibatalkan"""
