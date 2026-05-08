@@ -1265,3 +1265,382 @@ class PrintPersiapanViewTest(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Kursi Tanpa Gudang')
+
+class AutocompletePelangganTest(TestCase):
+    """Test API autocomplete pencarian pelanggan"""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='admin_autocomplete',
+            password='admin123'
+        )
+        UserProfile.objects.create(user=self.user, role='admin')
+        self.client.login(username='admin_autocomplete', password='admin123')
+
+        # Buat beberapa pelanggan
+        self.pelanggan1 = Pelanggan.objects.create(
+            nama='Siti Rahayu',
+            hp='08111111111',
+            alamat='Bandung'
+        )
+        self.pelanggan2 = Pelanggan.objects.create(
+            nama='Siti Aminah',
+            hp='08222222222',
+            alamat='Cimahi'
+        )
+        self.pelanggan3 = Pelanggan.objects.create(
+            nama='Budi Santoso',
+            hp='08333333333',
+            alamat='Garut'
+        )
+
+    def test_api_return_hasil_pencarian(self):
+        """Test API return data pelanggan yang cocok"""
+        response = self.client.get(
+            reverse('pelanggan_search_api'),
+            {'q': 'Siti'}
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(len(data['results']), 2)
+
+    def test_api_cari_by_nama(self):
+        """Test API bisa cari berdasarkan nama"""
+        response = self.client.get(
+            reverse('pelanggan_search_api'),
+            {'q': 'Budi'}
+        )
+        data = response.json()
+        self.assertEqual(len(data['results']), 1)
+        self.assertEqual(data['results'][0]['nama'], 'Budi Santoso')
+
+    def test_api_cari_by_hp(self):
+        """Test API bisa cari berdasarkan nomor HP"""
+        response = self.client.get(
+            reverse('pelanggan_search_api'),
+            {'q': '08111'}
+        )
+        data = response.json()
+        self.assertEqual(len(data['results']), 1)
+        self.assertEqual(data['results'][0]['hp'], '08111111111')
+
+    def test_api_query_kurang_2_karakter(self):
+        """Test API return kosong kalau query kurang dari 2 karakter"""
+        response = self.client.get(
+            reverse('pelanggan_search_api'),
+            {'q': 'S'}
+        )
+        data = response.json()
+        self.assertEqual(len(data['results']), 0)
+
+    def test_api_query_kosong(self):
+        """Test API return kosong kalau query kosong"""
+        response = self.client.get(
+            reverse('pelanggan_search_api'),
+            {'q': ''}
+        )
+        data = response.json()
+        self.assertEqual(len(data['results']), 0)
+
+    def test_api_return_field_yang_benar(self):
+        """Test API return field id, nama, hp, alamat"""
+        response = self.client.get(
+            reverse('pelanggan_search_api'),
+            {'q': 'Budi'}
+        )
+        data = response.json()
+        result = data['results'][0]
+        self.assertIn('id', result)
+        self.assertIn('nama', result)
+        self.assertIn('hp', result)
+        self.assertIn('alamat', result)
+
+    def test_api_redirect_kalau_belum_login(self):
+        """Test API redirect ke login kalau belum login"""
+        self.client.logout()
+        response = self.client.get(
+            reverse('pelanggan_search_api'),
+            {'q': 'Siti'}
+        )
+        self.assertEqual(response.status_code, 302)
+
+    def test_api_tidak_ditemukan(self):
+        """Test API return kosong kalau tidak ada yang cocok"""
+        response = self.client.get(
+            reverse('pelanggan_search_api'),
+            {'q': 'XYZABC'}
+        )
+        data = response.json()
+        self.assertEqual(len(data['results']), 0)
+
+
+class PrintLaporanTest(TestCase):
+    """Test halaman print laporan keuangan dan barang"""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='admin_laporan_print',
+            password='admin123'
+        )
+        UserProfile.objects.create(user=self.user, role='admin')
+        self.client.login(username='admin_laporan_print', password='admin123')
+
+        # Buat data transaksi selesai
+        self.pelanggan = Pelanggan.objects.create(
+            nama='Test Laporan',
+            hp='08100000099'
+        )
+        self.barang = Barang.objects.create(
+            kode='LP001',
+            nama='Barang Laporan',
+            stok_total=10,
+            stok_tersedia=10,
+            harga_sewa=Decimal('50000'),
+            kondisi='baik'
+        )
+        self.transaksi = Transaksi.objects.create(
+            no_transaksi='SW20260508LP1',
+            pelanggan=self.pelanggan,
+            pelanggan_nama=self.pelanggan.nama,
+            pelanggan_hp=self.pelanggan.hp,
+            tanggal_sewa=datetime.date(2026, 5, 1),
+            tanggal_kembali=datetime.date(2026, 5, 3),
+            tanggal_kembali_aktual=datetime.date(2026, 5, 3),
+            uang_muka=Decimal('100000'),
+            total_harga=Decimal('300000'),
+            sisa_bayar=Decimal('200000'),
+            status='selesai',
+            dibuat_oleh=self.user,
+        )
+        DetailTransaksi.objects.create(
+            transaksi=self.transaksi,
+            barang=self.barang,
+            jumlah=2,
+            jumlah_hari=3,
+            harga_satuan=Decimal('50000'),
+            subtotal=Decimal('300000'),
+        )
+
+    def test_print_laporan_keuangan_bisa_diakses(self):
+        """Test halaman print laporan keuangan bisa diakses"""
+        response = self.client.get(
+            reverse('laporan_keuangan'),
+            {'bulan': 5, 'tahun': 2026, 'pdf': 1}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'reports/keuangan_print.html')
+
+    def test_print_laporan_keuangan_tampilkan_data(self):
+        """Test print laporan keuangan tampilkan data transaksi"""
+        response = self.client.get(
+            reverse('laporan_keuangan'),
+            {'bulan': 5, 'tahun': 2026, 'pdf': 1}
+        )
+        self.assertContains(response, 'SW20260508LP1')
+        self.assertContains(response, 'Test Laporan')
+
+    def test_print_laporan_keuangan_tampilkan_total(self):
+        """Test print laporan keuangan tampilkan total omzet"""
+        response = self.client.get(
+            reverse('laporan_keuangan'),
+            {'bulan': 5, 'tahun': 2026, 'pdf': 1}
+        )
+        self.assertContains(response, '300000')
+
+    def test_print_laporan_keuangan_filter_bulan_kosong(self):
+        """Test print laporan bulan lain tidak tampilkan data"""
+        response = self.client.get(
+            reverse('laporan_keuangan'),
+            {'bulan': 1, 'tahun': 2026, 'pdf': 1}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'SW20260508LP1')
+
+    def test_print_laporan_barang_bisa_diakses(self):
+        """Test halaman print laporan barang bisa diakses"""
+        response = self.client.get(
+            reverse('laporan_barang'),
+            {'pdf': 1}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'reports/barang_print.html')
+
+    def test_print_laporan_barang_tampilkan_data(self):
+        """Test print laporan barang tampilkan data barang"""
+        response = self.client.get(
+            reverse('laporan_barang'),
+            {'pdf': 1}
+        )
+        self.assertContains(response, 'Barang Laporan')
+
+    def test_print_redirect_kalau_belum_login(self):
+        """Test redirect ke login kalau belum login"""
+        self.client.logout()
+        response = self.client.get(
+            reverse('laporan_keuangan'),
+            {'pdf': 1}
+        )
+        self.assertEqual(response.status_code, 302)
+
+
+class JadwalViewTest(TestCase):
+    """Test jadwal menampilkan semua status transaksi"""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='admin_jadwal',
+            password='admin123'
+        )
+        UserProfile.objects.create(user=self.user, role='admin')
+        self.client.login(username='admin_jadwal', password='admin123')
+
+        # Transaksi menunggu
+        self.trx_menunggu = Transaksi.objects.create(
+            no_transaksi='SW20260508JD1',
+            pelanggan_nama='Pelanggan Menunggu',
+            pelanggan_hp='08100000020',
+            tanggal_sewa=datetime.date(2026, 5, 8),
+            tanggal_kembali=datetime.date(2026, 5, 10),
+            uang_muka=Decimal('0'),
+            total_harga=Decimal('100000'),
+            sisa_bayar=Decimal('100000'),
+            status='menunggu',
+            dibuat_oleh=self.user,
+        )
+
+        # Transaksi siap diambil
+        self.trx_siap = Transaksi.objects.create(
+            no_transaksi='SW20260508JD2',
+            pelanggan_nama='Pelanggan Siap',
+            pelanggan_hp='08100000021',
+            tanggal_sewa=datetime.date(2026, 5, 8),
+            tanggal_kembali=datetime.date(2026, 5, 10),
+            uang_muka=Decimal('0'),
+            total_harga=Decimal('100000'),
+            sisa_bayar=Decimal('100000'),
+            status='siap_diambil',
+            dibuat_oleh=self.user,
+        )
+
+        # Transaksi disewa - kembali hari ini
+        self.trx_disewa_hari_ini = Transaksi.objects.create(
+            no_transaksi='SW20260508JD3',
+            pelanggan_nama='Pelanggan Disewa',
+            pelanggan_hp='08100000022',
+            tanggal_sewa=datetime.date(2026, 5, 6),
+            tanggal_kembali=datetime.date.today(),
+            uang_muka=Decimal('0'),
+            total_harga=Decimal('100000'),
+            sisa_bayar=Decimal('100000'),
+            status='disewa',
+            dibuat_oleh=self.user,
+        )
+
+        # Transaksi disewa - terlambat
+        self.trx_terlambat = Transaksi.objects.create(
+            no_transaksi='SW20260508JD4',
+            pelanggan_nama='Pelanggan Terlambat',
+            pelanggan_hp='08100000023',
+            tanggal_sewa=datetime.date(2026, 5, 1),
+            tanggal_kembali=datetime.date(2026, 5, 3),
+            uang_muka=Decimal('0'),
+            total_harga=Decimal('100000'),
+            sisa_bayar=Decimal('100000'),
+            status='disewa',
+            dibuat_oleh=self.user,
+        )
+
+        # Transaksi disewa - akan datang
+        self.trx_akan_datang = Transaksi.objects.create(
+            no_transaksi='SW20260508JD5',
+            pelanggan_nama='Pelanggan Akan Datang',
+            pelanggan_hp='08100000024',
+            tanggal_sewa=datetime.date(2026, 5, 8),
+            tanggal_kembali=datetime.date(2026, 5, 20),
+            uang_muka=Decimal('0'),
+            total_harga=Decimal('100000'),
+            sisa_bayar=Decimal('100000'),
+            status='disewa',
+            dibuat_oleh=self.user,
+        )
+
+    def test_jadwal_bisa_diakses(self):
+        """Test halaman jadwal bisa diakses"""
+        response = self.client.get(reverse('jadwal'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'transactions/jadwal.html')
+
+    def test_jadwal_tampilkan_menunggu(self):
+        """Test jadwal tampilkan transaksi menunggu"""
+        response = self.client.get(reverse('jadwal'))
+        self.assertContains(response, 'SW20260508JD1')
+        self.assertContains(response, 'Pelanggan Menunggu')
+
+    def test_jadwal_tampilkan_siap_diambil(self):
+        """Test jadwal tampilkan transaksi siap diambil"""
+        response = self.client.get(reverse('jadwal'))
+        self.assertContains(response, 'SW20260508JD2')
+        self.assertContains(response, 'Pelanggan Siap')
+
+    def test_jadwal_tampilkan_kembali_hari_ini(self):
+        """Test jadwal tampilkan transaksi kembali hari ini"""
+        response = self.client.get(reverse('jadwal'))
+        self.assertContains(response, 'SW20260508JD3')
+
+    def test_jadwal_tampilkan_terlambat(self):
+        """Test jadwal tampilkan transaksi terlambat"""
+        response = self.client.get(reverse('jadwal'))
+        self.assertContains(response, 'SW20260508JD4')
+        self.assertContains(response, 'Pelanggan Terlambat')
+
+    def test_jadwal_tampilkan_akan_datang(self):
+        """Test jadwal tampilkan transaksi akan datang"""
+        response = self.client.get(reverse('jadwal'))
+        self.assertContains(response, 'SW20260508JD5')
+        self.assertContains(response, 'Pelanggan Akan Datang')
+
+    def test_jadwal_redirect_kalau_belum_login(self):
+        """Test jadwal redirect ke login kalau belum login"""
+        self.client.logout()
+        response = self.client.get(reverse('jadwal'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response['Location'])
+
+    def test_jadwal_tidak_tampilkan_selesai(self):
+        """Test jadwal tidak tampilkan transaksi selesai"""
+        Transaksi.objects.create(
+            no_transaksi='SW20260508JD6',
+            pelanggan_nama='Pelanggan Selesai',
+            pelanggan_hp='08100000025',
+            tanggal_sewa=datetime.date(2026, 5, 1),
+            tanggal_kembali=datetime.date(2026, 5, 3),
+            tanggal_kembali_aktual=datetime.date(2026, 5, 3),
+            uang_muka=Decimal('0'),
+            total_harga=Decimal('100000'),
+            sisa_bayar=Decimal('100000'),
+            status='selesai',
+            dibuat_oleh=self.user,
+        )
+        response = self.client.get(reverse('jadwal'))
+        self.assertNotContains(response, 'SW20260508JD6')
+
+    def test_jadwal_tidak_tampilkan_batal(self):
+        """Test jadwal tidak tampilkan transaksi batal"""
+        Transaksi.objects.create(
+            no_transaksi='SW20260508JD7',
+            pelanggan_nama='Pelanggan Batal',
+            pelanggan_hp='08100000026',
+            tanggal_sewa=datetime.date(2026, 5, 1),
+            tanggal_kembali=datetime.date(2026, 5, 3),
+            uang_muka=Decimal('0'),
+            total_harga=Decimal('100000'),
+            sisa_bayar=Decimal('100000'),
+            status='batal',
+            alasan_batal='Test',
+            dibuat_oleh=self.user,
+        )
+        response = self.client.get(reverse('jadwal'))
+        self.assertNotContains(response, 'SW20260508JD7')
