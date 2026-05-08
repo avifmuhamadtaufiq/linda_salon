@@ -43,6 +43,10 @@
         Dibuat oleh {{ transaksi.dibuat_oleh.get_full_name|default:transaksi.dibuat_oleh.username }}
     </span>
 {% endif %}
+    <a href="{% url 'transaksi_print_persiapan' transaksi.pk %}"
+        target="_blank" class="btn btn-outline-gold btn-sm">
+        <i class="bi bi-printer me-1"></i> Print Persiapan
+    </a>
 {% endblock %}
 {% block content %}
 <div class="row g-3">

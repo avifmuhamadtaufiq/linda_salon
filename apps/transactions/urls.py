@@ -10,4 +10,5 @@ urlpatterns = [
     path('<int:pk>/kembali/', views.transaksi_kembali, name='transaksi_kembali'),
     path('<int:pk>/batal/', views.transaksi_batal, name='transaksi_batal'),
     path('jadwal/', views.jadwal_view, name='jadwal'),
+    path('<int:pk>/print-persiapan/', views.transaksi_print_persiapan, name='transaksi_print_persiapan'),
 ]
