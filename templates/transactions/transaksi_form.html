@@ -138,39 +138,94 @@
         </div>
     </div>
 
-    <!-- Barang -->
+       <!-- Barang -->
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <span>Pilih Barang yang Disewa</span>
-                <button type="button" class="btn btn-outline-gold btn-sm" onclick="addBarangRow()">
-                    <i class="bi bi-plus-lg me-1"></i> Tambah Baris
-                </button>
+                <span style="font-size:0.78rem; color:var(--muted);">
+                    {{ barang_list|length }} barang tersedia
+                </span>
             </div>
-            <div class="table-responsive">
-                <table class="table mb-0" id="barangTable">
-                    <thead>
-                        <tr>
-                            <th>Barang</th>
-                            <th style="width:100px;">Jumlah</th>
-                            <th style="width:150px;">Harga Satuan</th>
-                            <th style="width:150px;">Subtotal</th>
-                            <th style="width:150px;">Kondisi Keluar</th>
-                            <th style="width:50px;"></th>
-                        </tr>
-                    </thead>
-                    <tbody id="barangRows"></tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="3" class="text-end"
-                                style="font-weight:600; font-size:0.9rem; padding:12px 14px;">Total:</td>
-                            <td style="font-weight:700; color:var(--gold-dark);
-                                font-family:'Cormorant Garamond',serif; font-size:1.2rem;
-                                padding:12px 14px;" id="grandTotal">Rp 0</td>
-                            <td colspan="2"></td>
-                        </tr>
-                    </tfoot>
-                </table>
+            <div class="card-body p-3">
+
+                <!-- Search box -->
+                <div style="position:relative; margin-bottom:16px;">
+                    <input type="text" id="searchBarang"
+                        class="form-control"
+                        placeholder="🔍 Ketik nama atau kode barang..."
+                        autocomplete="off"
+                        style="padding-left:16px; font-size:0.9rem;">
+                    <div id="searchCount" style="position:absolute; right:12px; top:50%;
+                        transform:translateY(-50%); font-size:0.78rem; color:var(--muted);">
+                    </div>
+                </div>
+
+                <!-- Tabel hasil pencarian barang -->
+                <div id="barangSearchResult" style="display:none; margin-bottom:16px;
+                    border:1px solid #EDE8DC; border-radius:10px; overflow:hidden;
+                    max-height:280px; overflow-y:auto;">
+                    <table class="table mb-0" style="font-size:0.85rem;">
+                        <thead style="position:sticky; top:0; z-index:1;">
+                            <tr>
+                                <th>Kode</th>
+                                <th>Nama Barang</th>
+                                <th>Gudang</th>
+                                <th class="text-center">Stok</th>
+                                <th>Harga/Hari</th>
+                                <th style="width:80px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="barangSearchBody"></tbody>
+                    </table>
+                </div>
+
+                <!-- Tabel barang yang sudah dipilih -->
+                <div style="font-size:0.78rem; color:var(--muted);
+                    text-transform:uppercase; letter-spacing:0.1em;
+                    margin-bottom:8px;" id="labelDipilih" style="display:none;">
+                    Barang yang disewa:
+                </div>
+                <div class="table-responsive">
+                    <table class="table mb-0" id="barangTable">
+                        <thead>
+                            <tr>
+                                <th>Barang</th>
+                                <th>Gudang</th>
+                                <th style="width:100px;">Jumlah</th>
+                                <th style="width:150px;">Harga/Hari</th>
+                                <th style="width:180px;">Subtotal</th>
+                                <th style="width:150px;">Kondisi Keluar</th>
+                                <th style="width:50px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="barangRows">
+                            <tr id="emptyRow">
+                                <td colspan="7" class="text-center py-4"
+                                    style="color:var(--muted); font-size:0.85rem;">
+                                    <i class="bi bi-box-seam me-2" style="opacity:0.4;"></i>
+                                    Cari dan pilih barang di atas
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4" class="text-end"
+                                    style="font-weight:600; font-size:0.9rem;
+                                    padding:12px 14px;">
+                                    Total:
+                                </td>
+                                <td style="font-weight:700; color:var(--gold-dark);
+                                    font-family:'Cormorant Garamond',serif;
+                                    font-size:1.2rem; padding:12px 14px;"
+                                    id="grandTotal">
+                                    Rp 0
+                                </td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -187,12 +242,269 @@
 <script>
 const barangData = [
     {% for b in barang_list %}
-    { id: {{ b.pk }}, nama: "{{ b.nama }}", kode: "{{ b.kode }}", harga: {{ b.harga_sewa }}, stok: {{ b.stok_tersedia }} },
+    {
+        id: {{ b.pk }},
+        nama: "{{ b.nama|escapejs }}",
+        kode: "{{ b.kode|escapejs }}",
+        harga: {{ b.harga_sewa }},
+        stok: {{ b.stok_tersedia }},
+        gudang: "{{ b.gudang.nama|default:'Tanpa Gudang'|escapejs }}",
+        gudang_alamat: "{{ b.gudang.alamat|default:''|escapejs }}"
+    },
     {% endfor %}
 ];
 
 // =====================
-// MODE TOGGLE
+// FORMAT RUPIAH
+// =====================
+function formatRp(n) {
+    return 'Rp ' + Math.round(n).toLocaleString('id-ID');
+}
+
+// =====================
+// HITUNG JUMLAH HARI
+// =====================
+function getJumlahHari() {
+    const tglSewa = document.getElementById('tanggal_sewa').value;
+    const tglKembali = document.getElementById('tanggal_kembali').value;
+    if (!tglSewa || !tglKembali) return 1;
+    const diff = (new Date(tglKembali) - new Date(tglSewa)) / (1000 * 60 * 60 * 24);
+    return Math.max(Math.round(diff), 1);
+}
+
+function hitungHari() {
+    const hari = getJumlahHari();
+    const el = document.getElementById('jumlah_hari_display');
+    if (el) el.textContent = hari;
+    // Update semua kalkulasi
+    document.querySelectorAll('.jumlah-input').forEach(inp => calcRow(inp));
+}
+
+// =====================
+// UPDATE TOTAL
+// =====================
+function updateTotal() {
+    let total = 0;
+    document.querySelectorAll('.row-subtotal').forEach(el => {
+        total += parseFloat(el.dataset.val || 0);
+    });
+    document.getElementById('grandTotal').textContent = formatRp(total);
+}
+
+// =====================
+// CALC ROW
+// =====================
+function calcRow(input) {
+    const tr = input.closest('tr');
+    const harga = parseFloat(tr.dataset.harga || 0);
+    const jml = parseFloat(input.value) || 0;
+    const hari = getJumlahHari();
+    const subtotal = harga * jml * hari;
+    const cell = tr.querySelector('.row-subtotal');
+    cell.innerHTML = `
+        <div style="font-weight:700;">${formatRp(subtotal)}</div>
+        <div style="font-size:0.72rem; color:var(--muted);">
+            ${formatRp(harga)} x${jml} x${hari} hari
+        </div>`;
+    cell.dataset.val = subtotal;
+    updateTotal();
+}
+
+// =====================
+// SEARCH BARANG
+// =====================
+let selectedBarangIds = new Set();
+
+document.getElementById('searchBarang').addEventListener('input', function() {
+    const q = this.value.trim().toLowerCase();
+    const resultDiv = document.getElementById('barangSearchResult');
+    const tbody = document.getElementById('barangSearchBody');
+    const countEl = document.getElementById('searchCount');
+
+    if (q.length < 1) {
+        resultDiv.style.display = 'none';
+        countEl.textContent = '';
+        return;
+    }
+
+    const filtered = barangData.filter(b =>
+        (b.nama.toLowerCase().includes(q) ||
+        b.kode.toLowerCase().includes(q) ||
+        b.gudang.toLowerCase().includes(q)) &&
+        !selectedBarangIds.has(b.id)
+    );
+
+    countEl.textContent = filtered.length + ' ditemukan';
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-3"
+                    style="color:var(--muted); font-size:0.85rem;">
+                    Tidak ditemukan
+                </td>
+            </tr>`;
+        resultDiv.style.display = 'block';
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(b => `
+        <tr style="cursor:pointer;" onmouseover="this.style.background='#FAF7F0'"
+            onmouseout="this.style.background='white'">
+            <td style="font-family:monospace; font-size:0.78rem;
+                color:var(--muted);">${b.kode}</td>
+            <td style="font-weight:600;">${b.nama}</td>
+            <td>
+                <span style="background:rgba(201,168,76,0.1);
+                    color:var(--gold-dark); padding:2px 8px;
+                    border-radius:20px; font-size:0.75rem;">
+                    🏢 ${b.gudang}
+                </span>
+            </td>
+            <td class="text-center">
+                <span style="color:${b.stok > 0 ? '#20948A' : '#B94040'};
+                    font-weight:600;">
+                    ${b.stok}
+                </span>
+            </td>
+            <td style="color:var(--gold-dark);">
+                ${formatRp(b.harga)}/hari
+            </td>
+            <td>
+                <button type="button"
+                    onclick="tambahBarang(${b.id})"
+                    class="btn btn-gold btn-sm"
+                    style="font-size:0.78rem; padding:4px 12px;"
+                    ${b.stok === 0 ? 'disabled' : ''}>
+                    + Pilih
+                </button>
+            </td>
+        </tr>
+    `).join('');
+
+    resultDiv.style.display = 'block';
+});
+
+// Tutup hasil pencarian saat klik di luar
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#searchBarang') &&
+        !e.target.closest('#barangSearchResult')) {
+        document.getElementById('barangSearchResult').style.display = 'none';
+    }
+});
+
+// =====================
+// TAMBAH BARANG KE TABEL
+// =====================
+function tambahBarang(barangId) {
+    const b = barangData.find(x => x.id === barangId);
+    if (!b) return;
+
+    // Cek sudah dipilih
+    if (selectedBarangIds.has(barangId)) {
+        alert(`${b.nama} sudah ada di daftar!`);
+        return;
+    }
+
+    // Hapus empty row kalau ada
+    const emptyRow = document.getElementById('emptyRow');
+    if (emptyRow) emptyRow.remove();
+
+    selectedBarangIds.add(barangId);
+
+    const tbody = document.getElementById('barangRows');
+    const tr = document.createElement('tr');
+    tr.id = `row_${barangId}`;
+    tr.dataset.harga = b.harga;
+    tr.dataset.barangId = barangId;
+
+    tr.innerHTML = `
+        <td>
+            <input type="hidden" name="barang_id" value="${barangId}">
+            <div style="font-weight:600; font-size:0.88rem;">${b.nama}</div>
+            <div style="font-family:monospace; font-size:0.75rem;
+                color:var(--muted);">${b.kode}</div>
+        </td>
+        <td>
+            <span style="background:rgba(201,168,76,0.1);
+                color:var(--gold-dark); padding:2px 8px;
+                border-radius:20px; font-size:0.75rem;">
+                🏢 ${b.gudang}
+            </span>
+            ${b.gudang_alamat ?
+                `<div style="font-size:0.72rem; color:var(--muted);
+                    margin-top:3px;">📍 ${b.gudang_alamat}</div>` : ''}
+        </td>
+        <td>
+            <input type="number" name="jumlah"
+                class="form-control form-control-sm jumlah-input"
+                value="1" min="1" max="${b.stok}"
+                onchange="calcRow(this)" oninput="calcRow(this)"
+                style="width:70px;">
+            <div style="font-size:0.7rem; color:var(--muted); margin-top:3px;">
+                Maks: ${b.stok}
+            </div>
+        </td>
+        <td style="font-size:0.85rem; color:var(--gold-dark);">
+            ${formatRp(b.harga)}/hari
+        </td>
+        <td class="row-subtotal" data-val="0">
+            <div style="font-weight:700;">-</div>
+        </td>
+        <td>
+            <input type="text"
+                name="kondisi_keluar_${barangId}"
+                class="form-control form-control-sm"
+                value="Baik" placeholder="Kondisi">
+        </td>
+        <td>
+            <button type="button"
+                onclick="hapusBarang(${barangId})"
+                style="color:#B94040; border:none; background:none;
+                font-size:1.1rem; cursor:pointer; padding:4px;">
+                <i class="bi bi-x-circle"></i>
+            </button>
+        </td>
+    `;
+
+    tbody.appendChild(tr);
+
+    // Hitung subtotal
+    calcRow(tr.querySelector('.jumlah-input'));
+
+    // Reset search
+    document.getElementById('searchBarang').value = '';
+    document.getElementById('barangSearchResult').style.display = 'none';
+    document.getElementById('searchCount').textContent = '';
+}
+
+// =====================
+// HAPUS BARANG DARI TABEL
+// =====================
+function hapusBarang(barangId) {
+    const row = document.getElementById(`row_${barangId}`);
+    if (row) {
+        row.remove();
+        selectedBarangIds.delete(barangId);
+        updateTotal();
+    }
+
+    // Tampilkan empty row kalau tidak ada barang
+    if (document.getElementById('barangRows').children.length === 0) {
+        const tbody = document.getElementById('barangRows');
+        tbody.innerHTML = `
+            <tr id="emptyRow">
+                <td colspan="7" class="text-center py-4"
+                    style="color:var(--muted); font-size:0.85rem;">
+                    <i class="bi bi-box-seam me-2" style="opacity:0.4;"></i>
+                    Cari dan pilih barang di atas
+                </td>
+            </tr>`;
+    }
+}
+
+// =====================
+// MODE PELANGGAN (dari kode lama)
 // =====================
 let currentMode = 'lama';
 
@@ -204,7 +516,6 @@ function toggleMode(mode) {
         document.getElementById('btnPilihLama').className = 'btn btn-gold btn-sm';
         document.getElementById('btnBuatBaru').className = 'btn btn-outline-gold btn-sm';
         document.getElementById('pelanggan_id_hidden').value = '';
-        // kosongkan input baru
         document.getElementById('inp_nama').removeAttribute('required');
         document.getElementById('inp_hp').removeAttribute('required');
     } else {
@@ -219,16 +530,10 @@ function toggleMode(mode) {
     }
 }
 
-// =====================
-// PILIH DARI SELECT
-// =====================
 function pilihDariSelect(sel) {
     const opt = sel.selectedOptions[0];
     if (!opt.value) return clearPelanggan();
-    const nama = opt.dataset.nama;
-    const hp = opt.dataset.hp;
-    const alamat = opt.dataset.alamat;
-    setPelanggan(opt.value, nama, hp, alamat);
+    setPelanggan(opt.value, opt.dataset.nama, opt.dataset.hp, opt.dataset.alamat);
 }
 
 function setPelanggan(id, nama, hp, alamat) {
@@ -251,9 +556,7 @@ function clearPelanggan() {
     document.getElementById('selectPelanggan').value = '';
 }
 
-// =====================
-// SEARCH AUTOCOMPLETE
-// =====================
+// Search autocomplete pelanggan
 let searchTimeout;
 document.getElementById('searchPelanggan').addEventListener('input', function() {
     clearTimeout(searchTimeout);
@@ -268,14 +571,22 @@ document.getElementById('searchPelanggan').addEventListener('input', function() 
             .then(data => {
                 const box = document.getElementById('searchResults');
                 if (!data.results.length) {
-                    box.innerHTML = '<div style="padding:12px; color:var(--muted); font-size:0.85rem;">Tidak ditemukan</div>';
+                    box.innerHTML = `<div style="padding:12px; color:var(--muted);
+                        font-size:0.85rem;">Tidak ditemukan</div>`;
                 } else {
                     box.innerHTML = data.results.map(p => `
-                        <div onclick="setPelanggan(${p.id},'${p.nama.replace(/'/g,"\\'")}','${p.hp}','${(p.alamat||'').replace(/'/g,"\\'")}' )"
-                            style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #F0EBE0;"
-                            onmouseover="this.style.background='#FAF7F0'" onmouseout="this.style.background='white'">
-                            <div style="font-weight:600; font-size:0.88rem;">${p.nama}</div>
-                            <div style="font-size:0.78rem; color:var(--muted);">${p.hp}</div>
+                        <div onclick="setPelanggan(${p.id},
+                            '${p.nama.replace(/'/g,"\\'")}',
+                            '${p.hp}',
+                            '${(p.alamat||'').replace(/'/g,"\\'")}' )"
+                            style="padding:10px 14px; cursor:pointer;
+                            border-bottom:1px solid #F0EBE0;"
+                            onmouseover="this.style.background='#FAF7F0'"
+                            onmouseout="this.style.background='white'">
+                            <div style="font-weight:600;
+                                font-size:0.88rem;">${p.nama}</div>
+                            <div style="font-size:0.78rem;
+                                color:var(--muted);">${p.hp}</div>
                         </div>`).join('');
                 }
                 box.style.display = 'block';
@@ -284,101 +595,19 @@ document.getElementById('searchPelanggan').addEventListener('input', function() 
 });
 
 document.addEventListener('click', function(e) {
-    if (!e.target.closest('#searchPelanggan') && !e.target.closest('#searchResults')) {
+    if (!e.target.closest('#searchPelanggan') &&
+        !e.target.closest('#searchResults')) {
         document.getElementById('searchResults').style.display = 'none';
     }
 });
 
 // =====================
-// BARANG ROWS
+// INIT
 // =====================
-function formatRp(n) {
-    return 'Rp ' + Math.round(n).toLocaleString('id-ID');
-}
-
-function getJumlahHari() {
-    const tglSewa = document.getElementById('tanggal_sewa').value;
-    const tglKembali = document.getElementById('tanggal_kembali').value;
-    if (!tglSewa || !tglKembali) return 1;
-    const diff = (new Date(tglKembali) - new Date(tglSewa)) / (1000 * 60 * 60 * 24);
-    return Math.max(Math.round(diff), 1);
-}
-
-function hitungHari() {
-    const hari = getJumlahHari();
-    const el = document.getElementById('jumlah_hari_display');
-    if (el) el.textContent = hari;
-    // Update semua baris kalkulasi
-    document.querySelectorAll('.barang-select').forEach(sel => {
-        if (sel.value) onBarangChange(sel);
-    });
-}
-
-function updateTotal() {
-    let total = 0;
-    document.querySelectorAll('.row-subtotal').forEach(el => {
-        total += parseFloat(el.dataset.val || 0);
-    });
-    document.getElementById('grandTotal').textContent = formatRp(total);
-}
-
-function addBarangRow() {
-    const tbody = document.getElementById('barangRows');
-    const options = barangData.map(b =>
-        `<option value="${b.id}" data-harga="${b.harga}" data-stok="${b.stok}">[${b.kode}] ${b.nama} (Stok: ${b.stok})</option>`
-    ).join('');
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-        <td>
-            <select name="barang_id" class="form-select form-select-sm barang-select" required onchange="onBarangChange(this)">
-                <option value="">-- Pilih Barang --</option>
-                ${options}
-            </select>
-        </td>
-        <td><input type="number" name="jumlah" class="form-control form-control-sm jumlah-input"
-            value="1" min="1" onchange="calcRow(this)" oninput="calcRow(this)"></td>
-        <td class="harga-display" style="font-size:0.87rem; color:var(--muted); padding:11px 14px;">-</td>
-        <td class="row-subtotal" data-val="0"
-            style="font-weight:600; color:var(--gold-dark); padding:11px 14px;">-</td>
-        <td><input type="text" name="kondisi_keluar_" class="form-control form-control-sm" value="Baik"></td>
-        <td><button type="button" onclick="this.closest('tr').remove(); updateTotal();"
-            style="color:#B94040; border:none; background:none; font-size:1.1rem; cursor:pointer; padding:6px;">
-            <i class="bi bi-x-circle"></i></button></td>`;
-    tbody.appendChild(tr);
-}
-
-function onBarangChange(sel) {
-    const opt = sel.selectedOptions[0];
-    if (!opt.value) return;
-    const harga = parseFloat(opt.dataset.harga);
-    const stok = parseInt(opt.dataset.stok);
-    const tr = sel.closest('tr');
-    tr.querySelector('.harga-display').textContent = formatRp(harga);
-    const jmlInput = tr.querySelector('.jumlah-input');
-    jmlInput.max = stok;
-    tr.querySelector('input[name^="kondisi_keluar_"]').name = `kondisi_keluar_${opt.value}`;
-    calcRow(jmlInput);
-}
-
-function calcRow(input) {
-    const tr = input.closest('tr');
-    const sel = tr.querySelector('.barang-select');
-    const opt = sel.selectedOptions[0];
-    if (!opt || !opt.value) return;
-    const harga = parseFloat(opt.dataset.harga);
-    const jml = parseFloat(tr.querySelector('.jumlah-input').value) || 0;
-    const hari = getJumlahHari();
-    const subtotal = harga * jml * hari;
-    const cell = tr.querySelector('.row-subtotal');
-    // Tampilkan breakdown harga
-    cell.innerHTML = '<div>' + formatRp(subtotal) + '</div><div style="font-size:0.72rem;color:var(--muted);">' + formatRp(harga) + ' x' + jml + ' x' + hari + ' hari</div>';
-    cell.dataset.val = subtotal;
-    updateTotal();
-}
-
-// Init: auto pilih kalau ada pelanggan_id dari URL
 window.addEventListener('DOMContentLoaded', () => {
-    addBarangRow();
+    hitungHari();
+
+    // Auto pilih pelanggan dari URL
     const urlPelangganId = "{{ request.GET.pelanggan_id }}";
     if (urlPelangganId) {
         const sel = document.getElementById('selectPelanggan');
