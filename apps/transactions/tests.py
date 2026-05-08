@@ -710,3 +710,308 @@ class StatusTransaksiViewTest(TestCase):
         self.assertTemplateUsed(
             response, 'transactions/transaksi_konfirmasi.html'
         )
+
+class AksesKaryawanTest(TestCase):
+    """Test akses karyawan opsi 3"""
+
+    def setUp(self):
+        self.client = Client()
+
+        # Buat admin
+        self.admin = User.objects.create_user(
+            username='admin_akses',
+            password='admin123'
+        )
+        UserProfile.objects.create(user=self.admin, role='admin')
+
+        # Buat karyawan A
+        self.karyawan_a = User.objects.create_user(
+            username='karyawan_a',
+            password='karyawan123'
+        )
+        UserProfile.objects.create(user=self.karyawan_a, role='karyawan')
+
+        # Buat karyawan B
+        self.karyawan_b = User.objects.create_user(
+            username='karyawan_b',
+            password='karyawan123'
+        )
+        UserProfile.objects.create(user=self.karyawan_b, role='karyawan')
+
+        # Buat barang
+        self.barang = Barang.objects.create(
+            kode='AK001',
+            nama='Barang Akses Test',
+            stok_total=20,
+            stok_tersedia=20,
+            harga_sewa=Decimal('10000'),
+            kondisi='baik'
+        )
+
+        # Transaksi milik karyawan A - status menunggu
+        self.transaksi_a_menunggu = Transaksi.objects.create(
+            no_transaksi='SW20260508AK1',
+            pelanggan_nama='Pelanggan A',
+            pelanggan_hp='08100000010',
+            tanggal_sewa=datetime.date(2026, 5, 8),
+            tanggal_kembali=datetime.date(2026, 5, 10),
+            uang_muka=Decimal('0'),
+            total_harga=Decimal('40000'),
+            sisa_bayar=Decimal('40000'),
+            status='menunggu',
+            dibuat_oleh=self.karyawan_a,
+        )
+        DetailTransaksi.objects.create(
+            transaksi=self.transaksi_a_menunggu,
+            barang=self.barang,
+            jumlah=2,
+            jumlah_hari=2,
+            harga_satuan=Decimal('10000'),
+            subtotal=Decimal('40000'),
+        )
+        self.barang.stok_tersedia -= 2
+        self.barang.save()
+
+        # Transaksi milik karyawan A - status siap diambil
+        self.transaksi_a_siap = Transaksi.objects.create(
+            no_transaksi='SW20260508AK2',
+            pelanggan_nama='Pelanggan A2',
+            pelanggan_hp='08100000011',
+            tanggal_sewa=datetime.date(2026, 5, 8),
+            tanggal_kembali=datetime.date(2026, 5, 10),
+            uang_muka=Decimal('0'),
+            total_harga=Decimal('20000'),
+            sisa_bayar=Decimal('20000'),
+            status='siap_diambil',
+            dibuat_oleh=self.karyawan_a,
+        )
+        DetailTransaksi.objects.create(
+            transaksi=self.transaksi_a_siap,
+            barang=self.barang,
+            jumlah=1,
+            jumlah_hari=2,
+            harga_satuan=Decimal('10000'),
+            subtotal=Decimal('20000'),
+        )
+        self.barang.stok_tersedia -= 1
+        self.barang.save()
+
+        # Transaksi milik karyawan A - status disewa
+        self.transaksi_a_disewa = Transaksi.objects.create(
+            no_transaksi='SW20260508AK3',
+            pelanggan_nama='Pelanggan A3',
+            pelanggan_hp='08100000012',
+            tanggal_sewa=datetime.date(2026, 5, 8),
+            tanggal_kembali=datetime.date(2026, 5, 10),
+            uang_muka=Decimal('0'),
+            total_harga=Decimal('20000'),
+            sisa_bayar=Decimal('20000'),
+            status='disewa',
+            dibuat_oleh=self.karyawan_a,
+        )
+        self.detail_disewa = DetailTransaksi.objects.create(
+            transaksi=self.transaksi_a_disewa,
+            barang=self.barang,
+            jumlah=1,
+            jumlah_hari=2,
+            harga_satuan=Decimal('10000'),
+            subtotal=Decimal('20000'),
+        )
+        self.barang.stok_tersedia -= 1
+        self.barang.save()
+
+    # ===========================
+    # TEST KARYAWAN B (bukan pembuat)
+    # ===========================
+
+    def test_karyawan_lain_tidak_bisa_siap_diambil(self):
+        """Test karyawan B tidak bisa proses siap diambil transaksi karyawan A"""
+        self.client.login(username='karyawan_b', password='karyawan123')
+        response = self.client.post(
+            reverse('transaksi_siap_diambil',
+                args=[self.transaksi_a_menunggu.pk])
+        )
+        # Redirect ke detail dengan pesan error
+        self.assertEqual(response.status_code, 302)
+        self.transaksi_a_menunggu.refresh_from_db()
+        # Status tidak berubah
+        self.assertEqual(self.transaksi_a_menunggu.status, 'menunggu')
+
+    def test_karyawan_lain_tidak_bisa_disewa(self):
+        """Test karyawan B tidak bisa proses barang keluar transaksi karyawan A"""
+        self.client.login(username='karyawan_b', password='karyawan123')
+        response = self.client.post(
+            reverse('transaksi_disewa',
+                args=[self.transaksi_a_siap.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+        self.transaksi_a_siap.refresh_from_db()
+        self.assertEqual(self.transaksi_a_siap.status, 'siap_diambil')
+
+    def test_karyawan_lain_tidak_bisa_kembali(self):
+        """Test karyawan B tidak bisa proses pengembalian transaksi karyawan A"""
+        self.client.login(username='karyawan_b', password='karyawan123')
+        response = self.client.post(
+            reverse('transaksi_kembali',
+                args=[self.transaksi_a_disewa.pk]),
+            {f'kondisi_kembali_{self.detail_disewa.pk}': 'Baik'}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.transaksi_a_disewa.refresh_from_db()
+        # Status tidak berubah
+        self.assertEqual(self.transaksi_a_disewa.status, 'disewa')
+
+    def test_karyawan_lain_tidak_bisa_batal(self):
+        """Test karyawan B tidak bisa batalkan transaksi karyawan A"""
+        self.client.login(username='karyawan_b', password='karyawan123')
+        response = self.client.post(
+            reverse('transaksi_batal',
+                args=[self.transaksi_a_menunggu.pk]),
+            {'alasan_batal': 'Coba batalkan transaksi orang lain'}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.transaksi_a_menunggu.refresh_from_db()
+        self.assertEqual(self.transaksi_a_menunggu.status, 'menunggu')
+
+    def test_karyawan_lain_bisa_lihat_detail(self):
+        """Test karyawan B bisa lihat detail transaksi karyawan A"""
+        self.client.login(username='karyawan_b', password='karyawan123')
+        response = self.client.get(
+            reverse('transaksi_detail',
+                args=[self.transaksi_a_menunggu.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_karyawan_lain_tidak_ada_tombol_aksi(self):
+        """Test karyawan B tidak lihat tombol aksi di detail transaksi karyawan A"""
+        self.client.login(username='karyawan_b', password='karyawan123')
+        response = self.client.get(
+            reverse('transaksi_detail',
+                args=[self.transaksi_a_menunggu.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        # Tombol aksi tidak tampil
+        self.assertNotContains(response, 'Siapkan Barang')
+        self.assertNotContains(response, 'Barang Keluar')
+        self.assertNotContains(response, 'Proses Pengembalian')
+
+    def test_karyawan_sendiri_ada_tombol_aksi(self):
+        """Test karyawan A lihat tombol aksi di transaksi miliknya"""
+        self.client.login(username='karyawan_a', password='karyawan123')
+        response = self.client.get(
+            reverse('transaksi_detail',
+                args=[self.transaksi_a_menunggu.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        # Tombol aksi tampil
+        self.assertContains(response, 'Siapkan Barang')
+
+    # ===========================
+    # TEST KARYAWAN A (pembuat)
+    # ===========================
+
+    def test_karyawan_sendiri_bisa_siap_diambil(self):
+        """Test karyawan A bisa proses siap diambil transaksi miliknya"""
+        self.client.login(username='karyawan_a', password='karyawan123')
+        response = self.client.post(
+            reverse('transaksi_siap_diambil',
+                args=[self.transaksi_a_menunggu.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+        self.transaksi_a_menunggu.refresh_from_db()
+        self.assertEqual(self.transaksi_a_menunggu.status, 'siap_diambil')
+
+    def test_karyawan_sendiri_bisa_disewa(self):
+        """Test karyawan A bisa proses barang keluar transaksi miliknya"""
+        self.client.login(username='karyawan_a', password='karyawan123')
+        response = self.client.post(
+            reverse('transaksi_disewa',
+                args=[self.transaksi_a_siap.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+        self.transaksi_a_siap.refresh_from_db()
+        self.assertEqual(self.transaksi_a_siap.status, 'disewa')
+
+    def test_karyawan_sendiri_bisa_kembali(self):
+        """Test karyawan A bisa proses pengembalian transaksi miliknya"""
+        self.client.login(username='karyawan_a', password='karyawan123')
+        response = self.client.post(
+            reverse('transaksi_kembali',
+                args=[self.transaksi_a_disewa.pk]),
+            {f'kondisi_kembali_{self.detail_disewa.pk}': 'Baik'}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.transaksi_a_disewa.refresh_from_db()
+        self.assertEqual(self.transaksi_a_disewa.status, 'selesai')
+
+    def test_karyawan_sendiri_bisa_batal(self):
+        """Test karyawan A bisa batalkan transaksi miliknya"""
+        self.client.login(username='karyawan_a', password='karyawan123')
+        response = self.client.post(
+            reverse('transaksi_batal',
+                args=[self.transaksi_a_menunggu.pk]),
+            {'alasan_batal': 'Dibatalkan oleh karyawan sendiri'}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.transaksi_a_menunggu.refresh_from_db()
+        self.assertEqual(self.transaksi_a_menunggu.status, 'batal')
+
+    # ===========================
+    # TEST ADMIN (bisa semua)
+    # ===========================
+
+    def test_admin_bisa_siap_diambil_transaksi_karyawan(self):
+        """Test admin bisa proses siap diambil transaksi milik karyawan"""
+        self.client.login(username='admin_akses', password='admin123')
+        response = self.client.post(
+            reverse('transaksi_siap_diambil',
+                args=[self.transaksi_a_menunggu.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+        self.transaksi_a_menunggu.refresh_from_db()
+        self.assertEqual(self.transaksi_a_menunggu.status, 'siap_diambil')
+
+    def test_admin_bisa_disewa_transaksi_karyawan(self):
+        """Test admin bisa proses barang keluar transaksi milik karyawan"""
+        self.client.login(username='admin_akses', password='admin123')
+        response = self.client.post(
+            reverse('transaksi_disewa',
+                args=[self.transaksi_a_siap.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+        self.transaksi_a_siap.refresh_from_db()
+        self.assertEqual(self.transaksi_a_siap.status, 'disewa')
+
+    def test_admin_bisa_kembali_transaksi_karyawan(self):
+        """Test admin bisa proses pengembalian transaksi milik karyawan"""
+        self.client.login(username='admin_akses', password='admin123')
+        response = self.client.post(
+            reverse('transaksi_kembali',
+                args=[self.transaksi_a_disewa.pk]),
+            {f'kondisi_kembali_{self.detail_disewa.pk}': 'Baik'}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.transaksi_a_disewa.refresh_from_db()
+        self.assertEqual(self.transaksi_a_disewa.status, 'selesai')
+
+    def test_admin_bisa_batal_transaksi_karyawan(self):
+        """Test admin bisa batalkan transaksi milik karyawan"""
+        self.client.login(username='admin_akses', password='admin123')
+        response = self.client.post(
+            reverse('transaksi_batal',
+                args=[self.transaksi_a_menunggu.pk]),
+            {'alasan_batal': 'Dibatalkan oleh admin'}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.transaksi_a_menunggu.refresh_from_db()
+        self.assertEqual(self.transaksi_a_menunggu.status, 'batal')
+
+    def test_admin_ada_tombol_aksi_di_semua_transaksi(self):
+        """Test admin lihat tombol aksi di semua transaksi"""
+        self.client.login(username='admin_akses', password='admin123')
+        response = self.client.get(
+            reverse('transaksi_detail',
+                args=[self.transaksi_a_menunggu.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Siapkan Barang')
