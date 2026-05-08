@@ -1015,3 +1015,253 @@ class AksesKaryawanTest(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Siapkan Barang')
+
+class PrintPersiapanViewTest(TestCase):
+    """Test fitur print persiapan barang untuk gudang"""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='admin_print',
+            password='admin123'
+        )
+        UserProfile.objects.create(user=self.user, role='admin')
+        self.client.login(username='admin_print', password='admin123')
+
+        # Buat gudang
+        from apps.inventory.models import Gudang
+        self.gudang_andir = Gudang.objects.create(
+            nama='Gudang Andir',
+            alamat='Jl. Andir No. 1',
+            aktif=True
+        )
+        self.gudang_kubang = Gudang.objects.create(
+            nama='Gudang Kubang',
+            alamat='Jl. Kubang No. 2',
+            aktif=True
+        )
+
+        # Buat kategori dan barang
+        self.kategori = Kategori.objects.create(nama='Kursi')
+        self.barang_andir = Barang.objects.create(
+            kode='PR001',
+            nama='Kursi Andir',
+            kategori=self.kategori,
+            gudang=self.gudang_andir,
+            stok_total=10,
+            stok_tersedia=10,
+            harga_sewa=Decimal('10000'),
+            kondisi='baik'
+        )
+        self.barang_kubang = Barang.objects.create(
+            kode='PR002',
+            nama='Kursi Kubang',
+            kategori=self.kategori,
+            gudang=self.gudang_kubang,
+            stok_total=10,
+            stok_tersedia=10,
+            harga_sewa=Decimal('15000'),
+            kondisi='baik'
+        )
+        self.barang_tanpa_gudang = Barang.objects.create(
+            kode='PR003',
+            nama='Kursi Tanpa Gudang',
+            kategori=self.kategori,
+            gudang=None,
+            stok_total=5,
+            stok_tersedia=5,
+            harga_sewa=Decimal('12000'),
+            kondisi='baik'
+        )
+
+        # Buat pelanggan
+        self.pelanggan = Pelanggan.objects.create(
+            nama='Siti Aminah',
+            hp='08199998888',
+            alamat='Jl. Bandung No. 10'
+        )
+
+        # Buat transaksi lengkap
+        self.transaksi = Transaksi.objects.create(
+            no_transaksi='SW20260508PR1',
+            pelanggan=self.pelanggan,
+            pelanggan_nama=self.pelanggan.nama,
+            pelanggan_hp=self.pelanggan.hp,
+            pelanggan_alamat=self.pelanggan.alamat,
+            acara='Pernikahan Siti',
+            tanggal_sewa=datetime.date(2026, 5, 8),
+            tanggal_kembali=datetime.date(2026, 5, 10),
+            uang_muka=Decimal('100000'),
+            total_harga=Decimal('350000'),
+            sisa_bayar=Decimal('250000'),
+            catatan='Mohon disiapkan dengan hati-hati',
+            status='menunggu',
+            dibuat_oleh=self.user,
+        )
+
+        # Detail barang dari 2 gudang berbeda
+        DetailTransaksi.objects.create(
+            transaksi=self.transaksi,
+            barang=self.barang_andir,
+            jumlah=5,
+            jumlah_hari=2,
+            harga_satuan=Decimal('10000'),
+            subtotal=Decimal('100000'),
+            kondisi_keluar='Baik'
+        )
+        DetailTransaksi.objects.create(
+            transaksi=self.transaksi,
+            barang=self.barang_kubang,
+            jumlah=3,
+            jumlah_hari=2,
+            harga_satuan=Decimal('15000'),
+            subtotal=Decimal('90000'),
+            kondisi_keluar='Baik'
+        )
+
+    def test_halaman_print_bisa_diakses(self):
+        """Test halaman print persiapan bisa diakses"""
+        response = self.client.get(
+            reverse('transaksi_print_persiapan',
+                args=[self.transaksi.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(
+            response,
+            'transactions/transaksi_print_persiapan.html'
+        )
+
+    def test_print_tampilkan_info_pelanggan(self):
+        """Test halaman print menampilkan info pelanggan"""
+        response = self.client.get(
+            reverse('transaksi_print_persiapan',
+                args=[self.transaksi.pk])
+        )
+        self.assertContains(response, 'Siti Aminah')
+        self.assertContains(response, '08199998888')
+        self.assertContains(response, 'Jl. Bandung No. 10')
+        self.assertContains(response, 'Pernikahan Siti')
+
+    def test_print_tampilkan_info_transaksi(self):
+        """Test halaman print menampilkan info transaksi"""
+        response = self.client.get(
+            reverse('transaksi_print_persiapan',
+                args=[self.transaksi.pk])
+        )
+        self.assertContains(response, 'SW20260508PR1')
+        self.assertContains(response, '08 Mei 2026')
+
+    def test_print_tampilkan_nama_gudang(self):
+        """Test halaman print menampilkan nama gudang"""
+        response = self.client.get(
+            reverse('transaksi_print_persiapan',
+                args=[self.transaksi.pk])
+        )
+        self.assertContains(response, 'Gudang Andir')
+        self.assertContains(response, 'Gudang Kubang')
+
+    def test_print_tampilkan_alamat_gudang(self):
+        """Test halaman print menampilkan alamat gudang"""
+        response = self.client.get(
+            reverse('transaksi_print_persiapan',
+                args=[self.transaksi.pk])
+        )
+        self.assertContains(response, 'Jl. Andir No. 1')
+        self.assertContains(response, 'Jl. Kubang No. 2')
+
+    def test_print_tampilkan_nama_barang(self):
+        """Test halaman print menampilkan nama barang"""
+        response = self.client.get(
+            reverse('transaksi_print_persiapan',
+                args=[self.transaksi.pk])
+        )
+        self.assertContains(response, 'Kursi Andir')
+        self.assertContains(response, 'Kursi Kubang')
+
+    def test_print_tampilkan_jumlah_barang(self):
+        """Test halaman print menampilkan jumlah barang"""
+        response = self.client.get(
+            reverse('transaksi_print_persiapan',
+                args=[self.transaksi.pk])
+        )
+        self.assertContains(response, '5')
+        self.assertContains(response, '3')
+
+    def test_print_tidak_tampilkan_harga(self):
+        """Test halaman print tidak menampilkan harga"""
+        response = self.client.get(
+            reverse('transaksi_print_persiapan',
+                args=[self.transaksi.pk])
+        )
+        # Harga tidak boleh tampil
+        self.assertNotContains(response, 'Rp 10000')
+        self.assertNotContains(response, 'Rp 15000')
+        self.assertNotContains(response, 'Rp 350000')
+        self.assertNotContains(response, 'Subtotal')
+        self.assertNotContains(response, 'Total')
+
+    def test_print_tampilkan_catatan(self):
+        """Test halaman print menampilkan catatan transaksi"""
+        response = self.client.get(
+            reverse('transaksi_print_persiapan',
+                args=[self.transaksi.pk])
+        )
+        self.assertContains(response, 'Mohon disiapkan dengan hati-hati')
+
+    def test_print_tampilkan_kolom_checklist(self):
+        """Test halaman print ada kolom checklist untuk gudang"""
+        response = self.client.get(
+            reverse('transaksi_print_persiapan',
+                args=[self.transaksi.pk])
+        )
+        self.assertContains(response, 'check-box')
+
+    def test_print_bisa_diakses_karyawan(self):
+        """Test karyawan juga bisa akses halaman print"""
+        karyawan = User.objects.create_user(
+            username='karyawan_print',
+            password='karyawan123'
+        )
+        UserProfile.objects.create(user=karyawan, role='karyawan')
+        self.client.login(username='karyawan_print', password='karyawan123')
+        response = self.client.get(
+            reverse('transaksi_print_persiapan',
+                args=[self.transaksi.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_print_redirect_kalau_belum_login(self):
+        """Test redirect ke login kalau belum login"""
+        self.client.logout()
+        response = self.client.get(
+            reverse('transaksi_print_persiapan',
+                args=[self.transaksi.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response['Location'])
+
+    def test_print_transaksi_tidak_ada_404(self):
+        """Test transaksi tidak ada return 404"""
+        response = self.client.get(
+            reverse('transaksi_print_persiapan', args=[99999])
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_print_barang_tanpa_gudang(self):
+        """Test print tetap bisa tampil meski ada barang tanpa gudang"""
+        # Tambah barang tanpa gudang ke transaksi
+        DetailTransaksi.objects.create(
+            transaksi=self.transaksi,
+            barang=self.barang_tanpa_gudang,
+            jumlah=2,
+            jumlah_hari=2,
+            harga_satuan=Decimal('12000'),
+            subtotal=Decimal('48000'),
+            kondisi_keluar='Baik'
+        )
+        response = self.client.get(
+            reverse('transaksi_print_persiapan',
+                args=[self.transaksi.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Kursi Tanpa Gudang')
