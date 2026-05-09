@@ -311,39 +311,42 @@
     </div>
 </div>
 
-<!-- Daftar Barang Per Gudang -->
-{% regroup detail by barang.gudang as barang_per_gudang %}
-
-{% for gudang_group in barang_per_gudang %}
-<div class="gudang-section">
-    <div class="gudang-header">
-        <span>🏢</span>
-        <div>
-            <div class="gudang-nama">
-                {{ gudang_group.grouper.nama|default:"Tanpa Gudang" }}
-            </div>
-            {% if gudang_group.grouper.alamat %}
-            <div class="gudang-alamat">
-                📍 {{ gudang_group.grouper.alamat }}
-            </div>
-            {% endif %}
-        </div>
-    </div>
-    <table>
-        <thead>
-            <tr>
-                <th style="width:80px;">Kode</th>
-                <th>Nama Barang</th>
-                <th style="width:80px; text-align:center;">Jumlah</th>
-                <th style="width:120px;">Kondisi Keluar</th>
-                <th class="check-col">✓ Siap</th>
+<!-- Daftar Barang dalam 1 Tabel -->
+<table>
+    <thead>
+        <tr>
+            <th style="width:80px;">Kode</th>
+            <th>Nama Barang</th>
+            <th style="width:160px;">Gudang</th>
+            <th style="width:80px; text-align:center;">Jumlah</th>
+            <th style="width:120px;">Kondisi Keluar</th>
+            <th class="check-col">✓ Siap</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% regroup detail by barang.gudang as barang_per_gudang %}
+        {% for gudang_group in barang_per_gudang %}
+            <!-- Baris header gudang -->
+            <tr style="background:#FAF7F0;">
+                <td colspan="6" style="padding:6px 12px;">
+                    <span style="font-weight:700; color:#9A7A2E; font-size:11px;">
+                        🏢 {{ gudang_group.grouper.nama|default:"Tanpa Gudang" }}
+                    </span>
+                    {% if gudang_group.grouper.alamat %}
+                    <span style="color:#8A7355; font-size:10px; margin-left:8px;">
+                        📍 {{ gudang_group.grouper.alamat }}
+                    </span>
+                    {% endif %}
+                </td>
             </tr>
-        </thead>
-        <tbody>
+            <!-- Baris barang -->
             {% for d in gudang_group.list %}
             <tr>
                 <td class="kode-barang">{{ d.barang.kode }}</td>
                 <td class="nama-barang">{{ d.barang.nama }}</td>
+                <td style="font-size:10px; color:#8A7355;">
+                    {{ d.barang.gudang.nama|default:"-" }}
+                </td>
                 <td class="jumlah">{{ d.jumlah }}</td>
                 <td>{{ d.kondisi_keluar|default:"Baik" }}</td>
                 <td class="check-col">
@@ -351,10 +354,9 @@
                 </td>
             </tr>
             {% endfor %}
-        </tbody>
-    </table>
-</div>
-{% endfor %}
+        {% endfor %}
+    </tbody>
+</table>
 
 <!-- Catatan -->
 {% if transaksi.catatan %}
