@@ -45,7 +45,6 @@
 {% endif %}
     <a href="{% url 'transaksi_print_persiapan' transaksi.pk %}"
         target="_blank" class="btn btn-outline-gold btn-sm">
-        <i class="bi bi-printer me-1"></i> Print Persiapan
     </a>
 {% endblock %}
 {% block content %}
@@ -97,15 +96,15 @@
             <hr style="border-color:#EDE8DC; margin:12px 0;">
             <div class="d-flex justify-content-between mb-2">
                 <span style="font-size:0.83rem; color:var(--muted);">Total</span>
-                <strong>Rp {{ transaksi.total_harga|floatformat:0 }}</strong>
+                <strong>{{ transaksi.total_harga|rupiah }}</strong>
             </div>
             <div class="d-flex justify-content-between mb-2">
                 <span style="font-size:0.83rem; color:var(--muted);">Uang Muka</span>
-                <span style="color:#20948A;">Rp {{ transaksi.uang_muka|floatformat:0 }}</span>
+                <span style="color:#20948A;">{{ transaksi.uang_muka|rupiah }}</span>
             </div>
             <div class="d-flex justify-content-between">
                 <span style="font-size:0.83rem; color:var(--muted);">Sisa Bayar</span>
-                <strong style="color:#B94040;">Rp {{ transaksi.sisa_bayar|floatformat:0 }}</strong>
+                <strong style="color:#B94040;">{{ transaksi.sisa_bayar|rupiah }}</strong>
             </div>
         </div>
         <div style="font-size:0.78rem; color:var(--muted); text-align:center;">
@@ -139,8 +138,8 @@
                                 <span style="color:var(--muted); font-size:0.83rem;">-</span>
                                 {% endif %}
                             </td>
-                            <td>Rp {{ d.harga_satuan|floatformat:0 }}</td>
-                            <td style="font-weight:600;">Rp {{ d.subtotal|floatformat:0 }}</td>
+                            <td>{{ d.harga_satuan|rupiah }}</td>
+                            <td style="font-weight:600;">{{ d.subtotal|rupiah }}</td>
                             <td style="font-size:0.83rem;">{{ d.kondisi_keluar|default:"-" }}</td>
                             <td style="font-size:0.83rem;">{{ d.kondisi_kembali|default:"-" }}</td>
                         </tr>
@@ -149,7 +148,7 @@
                     <tfoot>
                         <tr>
                             <td colspan="3" class="text-end" style="font-weight:600;">Total:</td>
-                            <td style="font-weight:700; color:var(--gold-dark); font-family:'Cormorant Garamond',serif; font-size:1.1rem;">Rp {{ transaksi.total_harga|floatformat:0 }}</td>
+                            <td style="font-weight:700; color:var(--gold-dark); font-family:'Cormorant Garamond',serif; font-size:1.1rem;">{{ transaksi.total_harga|rupiah }}</td>
                             <td colspan="2"></td>
                         </tr>
                     </tfoot>

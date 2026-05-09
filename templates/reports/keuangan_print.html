@@ -189,15 +189,7 @@
 <div class="summary">
     <div class="summary-card gold">
         <div class="label">Total Omzet</div>
-        <div class="value">Rp {{ total_omzet|floatformat:0 }}</div>
-    </div>
-    <div class="summary-card">
-        <div class="label">Total DP Masuk</div>
-        <div class="value">Rp {{ total_dp|floatformat:0 }}</div>
-    </div>
-    <div class="summary-card">
-        <div class="label">Total Sisa Bayar</div>
-        <div class="value">Rp {{ total_sisa|floatformat:0 }}</div>
+        <div class="value">{{ total_omzet|rupiah }}</div>
     </div>
     <div class="summary-card">
         <div class="label">Jumlah Transaksi</div>
@@ -216,8 +208,6 @@
             <th>Tgl Sewa</th>
             <th>Tgl Kembali</th>
             <th class="text-right">Total</th>
-            <th class="text-right">DP</th>
-            <th class="text-right">Sisa</th>
         </tr>
     </thead>
     <tbody>
@@ -229,9 +219,7 @@
             <td>{{ trx.acara|default:"-" }}</td>
             <td>{{ trx.tanggal_sewa|date:"d/m/Y" }}</td>
             <td>{{ trx.tanggal_kembali_aktual|date:"d/m/Y" }}</td>
-            <td class="text-right">Rp {{ trx.total_harga|floatformat:0 }}</td>
-            <td class="text-right">Rp {{ trx.uang_muka|floatformat:0 }}</td>
-            <td class="text-right">Rp {{ trx.sisa_bayar|floatformat:0 }}</td>
+            <td class="text-right">{{ trx.total_harga|rupiah }}</td>
         </tr>
         {% empty %}
         <tr>
@@ -244,9 +232,7 @@
     <tfoot>
         <tr>
             <td colspan="6" class="text-right">TOTAL</td>
-            <td class="text-right">Rp {{ total_omzet|floatformat:0 }}</td>
-            <td class="text-right">Rp {{ total_dp|floatformat:0 }}</td>
-            <td class="text-right">Rp {{ total_sisa|floatformat:0 }}</td>
+            <td class="text-right">{{ total_omzet|rupiah }}</td>
         </tr>
     </tfoot>
 </table>

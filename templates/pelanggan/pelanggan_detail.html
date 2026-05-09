@@ -91,7 +91,7 @@
                             <td style="font-size:0.83rem;">{{ trx.acara|default:"-" }}</td>
                             <td>{{ trx.tanggal_sewa|date:"d M Y" }}</td>
                             <td>{{ trx.tanggal_kembali|date:"d M Y" }}</td>
-                            <td style="font-weight:600;">Rp {{ trx.total_harga|floatformat:0 }}</td>
+                            <td style="font-weight:600;">{{ trx.total_harga|rupiah }}</td>
                             <td><span class="badge-{{ trx.status }}">{{ trx.get_status_display }}</span></td>
                         </tr>
                         {% empty %}

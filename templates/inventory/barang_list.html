@@ -54,7 +54,7 @@
                         <span style="color:{% if b.stok_tersedia == 0 %}#B94040{% else %}#20948A{% endif %}; font-weight:600;">{{ b.stok_tersedia }}</span>
                     </td>
                     <td class="text-center">{{ b.stok_disewa }}</td>
-                    <td>Rp {{ b.harga_sewa|floatformat:0 }}</td>
+                    <td>{{ b.harga_sewa|rupiah }}</td>
                     <td style="font-size:0.83rem;">
                         {% if b.gudang %}
                         <span style="background:rgba(201,168,76,0.1); color:var(--gold-dark);

@@ -12,7 +12,7 @@
                 <div class="row g-2 mb-3" style="font-size:0.87rem;">
                     <div class="col-md-4"><span style="color:var(--muted);">Tgl Sewa:</span> {{ transaksi.tanggal_sewa|date:"d M Y" }}</div>
                     <div class="col-md-4"><span style="color:var(--muted);">Jatuh Tempo:</span> {{ transaksi.tanggal_kembali|date:"d M Y" }}</div>
-                    <div class="col-md-4"><span style="color:var(--muted);">Total:</span> <strong>Rp {{ transaksi.total_harga|floatformat:0 }}</strong></div>
+                    <div class="col-md-4"><span style="color:var(--muted);">Total:</span> <strong>{{ transaksi.total_harga|rupiah }}</strong></div>
                 </div>
             </div>
         </div>

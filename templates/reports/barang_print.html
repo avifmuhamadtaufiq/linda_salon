@@ -128,7 +128,7 @@
             <td>{{ item.barang__kategori__nama|default:"-" }}</td>
             <td class="text-right">{{ item.total_disewa }}</td>
             <td class="text-right">{{ item.total_transaksi }}</td>
-            <td class="text-right">Rp {{ item.total_pendapatan|floatformat:0 }}</td>
+            <td class="text-right">{{ item.total_pendapatan|rupiah }}</td>
         </tr>
         {% empty %}
         <tr>

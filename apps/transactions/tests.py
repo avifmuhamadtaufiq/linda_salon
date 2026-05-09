@@ -1447,7 +1447,7 @@ class PrintLaporanTest(TestCase):
             reverse('laporan_keuangan'),
             {'bulan': 5, 'tahun': 2026, 'pdf': 1}
         )
-        self.assertContains(response, '300000')
+        self.assertContains(response, '300.000')
 
     def test_print_laporan_keuangan_filter_bulan_kosong(self):
         """Test print laporan bulan lain tidak tampilkan data"""

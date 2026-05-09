@@ -23,7 +23,7 @@
                     </div>
                     <div class="col-md-4">
                         <span style="color:var(--muted);">Total:</span>
-                        <strong>Rp {{ transaksi.total_harga|floatformat:0 }}</strong>
+                        <strong>{{ transaksi.total_harga|rupiah }}</strong>
                     </div>
                 </div>
             </div>

@@ -26,7 +26,7 @@
         <div class="stat-card">
             <div class="stat-icon bg-gold"><i class="bi bi-cash-stack"></i></div>
             <div>
-                <div class="stat-value" style="font-size:1.2rem;">Rp {{ total_omzet|floatformat:0 }}</div>
+                <div class="stat-value" style="font-size:1.2rem;">{{ total_omzet|rupiah }}</div>
                 <div class="stat-label">Total Omzet</div>
             </div>
         </div>
@@ -35,7 +35,7 @@
         <div class="stat-card">
             <div class="stat-icon bg-teal"><i class="bi bi-wallet2"></i></div>
             <div>
-                <div class="stat-value" style="font-size:1.2rem;">Rp {{ total_dp|floatformat:0 }}</div>
+                <div class="stat-value" style="font-size:1.2rem;">{{ total_dp|rupiah }}</div>
                 <div class="stat-label">Total DP Masuk</div>
             </div>
         </div>
@@ -44,7 +44,7 @@
         <div class="stat-card">
             <div class="stat-icon bg-rose"><i class="bi bi-hourglass-split"></i></div>
             <div>
-                <div class="stat-value" style="font-size:1.2rem;">Rp {{ total_sisa|floatformat:0 }}</div>
+                <div class="stat-value" style="font-size:1.2rem;">{{ total_sisa|rupiah }}</div>
                 <div class="stat-label">Total Sisa Bayar</div>
             </div>
         </div>
@@ -64,10 +64,6 @@
     <div class="card-header d-flex align-items-center justify-content-between">
         <span>Rincian Transaksi — {{ bulan_nama }} {{ tahun }}</span>
         <div class="d-flex gap-2">
-            <a href="?bulan={{ bulan }}&tahun={{ tahun }}&print=1"
-                target="_blank" class="btn btn-outline-gold btn-sm">
-                <i class="bi bi-printer me-1"></i> Print
-            </a>
             <a href="?bulan={{ bulan }}&tahun={{ tahun }}&pdf=1"
                 target="_blank" class="btn btn-gold btn-sm">
                 <i class="bi bi-file-earmark-pdf me-1"></i> PDF
@@ -86,7 +82,7 @@
                 <tr>
                     <th>#</th><th>No. Transaksi</th><th>Pelanggan</th>
                     <th>Acara</th><th>Tgl Kembali</th>
-                    <th>Total</th><th>DP</th><th>Sisa</th>
+                    <th>Total</th>
                 </tr>
             </thead>
             <tbody>
@@ -97,9 +93,7 @@
                     <td>{{ trx.pelanggan_nama }}</td>
                     <td style="font-size:0.83rem; color:var(--muted);">{{ trx.acara|default:"-" }}</td>
                     <td>{{ trx.tanggal_kembali_aktual|date:"d M Y" }}</td>
-                    <td style="font-weight:600;">Rp {{ trx.total_harga|floatformat:0 }}</td>
-                    <td style="color:#20948A;">Rp {{ trx.uang_muka|floatformat:0 }}</td>
-                    <td style="color:#B94040;">Rp {{ trx.sisa_bayar|floatformat:0 }}</td>
+                    <td style="font-weight:600;">{{ trx.total_harga|rupiah }}</td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="8" class="text-center py-4" style="color:var(--muted);">Tidak ada transaksi pada periode ini</td></tr>
@@ -109,9 +103,7 @@
             <tfoot>
                 <tr style="background:#FAF7F0;">
                     <td colspan="5" style="text-align:right; font-weight:700; font-size:0.88rem; padding:10px 14px;">TOTAL</td>
-                    <td style="font-weight:700; color:var(--gold-dark); padding:10px 14px;">Rp {{ total_omzet|floatformat:0 }}</td>
-                    <td style="font-weight:700; color:#20948A; padding:10px 14px;">Rp {{ total_dp|floatformat:0 }}</td>
-                    <td style="font-weight:700; color:#B94040; padding:10px 14px;">Rp {{ total_sisa|floatformat:0 }}</td>
+                    <td style="font-weight:700; color:var(--gold-dark); padding:10px 14px;">{{ total_omzet|rupiah }}</td>
                 </tr>
             </tfoot>
             {% endif %}

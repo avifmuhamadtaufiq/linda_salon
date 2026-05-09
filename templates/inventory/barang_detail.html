@@ -21,7 +21,7 @@
             <hr style="border-color:#EDE8DC;">
             <div class="d-flex justify-content-between mb-2">
                 <span style="font-size:0.83rem; color:var(--muted);">Harga Sewa</span>
-                <strong style="color:var(--gold-dark);">Rp {{ barang.harga_sewa|floatformat:0 }}</strong>
+                <strong style="color:var(--gold-dark);">{{ barang.harga_sewa|rupiah }}</strong>
             </div>
             <div class="d-flex justify-content-between mb-2">
                 <span style="font-size:0.83rem; color:var(--muted);">Stok Total</span>

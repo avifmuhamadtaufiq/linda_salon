@@ -48,7 +48,7 @@
                     <td style="font-size:0.83rem; color:var(--muted);">
                         {{ trx.dibuat_oleh.get_full_name|default:trx.dibuat_oleh.username|default:"-" }}
                     </td>
-                    <td style="font-weight:600;">Rp {{ trx.total_harga|floatformat:0 }}</td>
+                    <td style="font-weight:600;">{{ trx.total_harga|rupiah }}</td>
                     <td><span class="badge-{{ trx.status }}">{{ trx.get_status_display }}</span></td>
                     <td>
                         <a href="{% url 'transaksi_detail' trx.pk %}" class="btn btn-sm btn-outline-gold">Detail</a>
