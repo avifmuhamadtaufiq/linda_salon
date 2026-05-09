@@ -1873,3 +1873,172 @@ class SearchBarangFormTest(TestCase):
 
         # Cek total: (15000 x 2 x 1) + (25000 x 1 x 1) = 55000
         self.assertEqual(transaksi.total_harga, Decimal('55000'))
+
+
+class PaginationTest(TestCase):
+    """Test pagination di daftar transaksi, barang, dan pelanggan"""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='admin_pagination',
+            password='admin123'
+        )
+        UserProfile.objects.create(user=self.user, role='admin')
+        self.client.login(username='admin_pagination', password='admin123')
+
+        self.kategori = Kategori.objects.create(nama='Test')
+
+        # Buat 25 transaksi
+        for i in range(25):
+            Transaksi.objects.create(
+                no_transaksi=f'SW2026050900{i:02d}',
+                pelanggan_nama=f'Pelanggan {i}',
+                pelanggan_hp=f'0810000{i:04d}',
+                tanggal_sewa=datetime.date(2026, 5, 9),
+                tanggal_kembali=datetime.date(2026, 5, 11),
+                uang_muka=Decimal('0'),
+                total_harga=Decimal('100000'),
+                sisa_bayar=Decimal('100000'),
+                status='menunggu' if i % 2 == 0 else 'disewa',
+                dibuat_oleh=self.user,
+            )
+
+        # Buat 25 barang
+        for i in range(25):
+            Barang.objects.create(
+                kode=f'BRG{i:03d}',
+                nama=f'Barang {i}',
+                kategori=self.kategori,
+                stok_total=10,
+                stok_tersedia=10,
+                harga_sewa=Decimal('10000'),
+                kondisi='baik'
+            )
+
+        # Buat 25 pelanggan
+        for i in range(25):
+            Pelanggan.objects.create(
+                nama=f'Pelanggan Paginasi {i}',
+                hp=f'0820000{i:04d}',
+            )
+
+    # ===========================
+    # TEST TRANSAKSI
+    # ===========================
+
+    def test_transaksi_list_halaman_1(self):
+        """Test daftar transaksi halaman 1 tampil 20 data"""
+        response = self.client.get(reverse('transaksi_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['transaksi_list']), 10)
+
+    def test_transaksi_list_halaman_2(self):
+        """Test daftar transaksi halaman 3 tampil sisa data"""
+        response = self.client.get(
+            reverse('transaksi_list'), {'page': 3}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['transaksi_list']), 5)
+
+    def test_transaksi_pagination_dengan_filter_status(self):
+        """Test pagination tetap jalan saat filter status aktif"""
+        response = self.client.get(
+            reverse('transaksi_list'),
+            {'status': 'menunggu', 'page': 1}
+        )
+        self.assertEqual(response.status_code, 200)
+        # Semua hasil filter status menunggu
+        for trx in response.context['transaksi_list']:
+            self.assertEqual(trx.status, 'menunggu')
+
+    def test_transaksi_pagination_dengan_filter_search(self):
+        """Test pagination tetap jalan saat search"""
+        response = self.client.get(
+            reverse('transaksi_list'),
+            {'q': 'Pelanggan 1', 'page': 1}
+        )
+        self.assertEqual(response.status_code, 200)
+        # Semua hasil mengandung kata kunci
+        for trx in response.context['transaksi_list']:
+            self.assertIn('Pelanggan 1', trx.pelanggan_nama)
+
+    def test_transaksi_page_invalid(self):
+        """Test halaman invalid tetap tampil halaman terakhir"""
+        response = self.client.get(
+            reverse('transaksi_list'), {'page': 99999}
+        )
+        self.assertEqual(response.status_code, 200)
+
+    # ===========================
+    # TEST BARANG
+    # ===========================
+
+    def test_barang_list_halaman_1(self):
+        """Test daftar barang halaman 1 tampil 20 data"""
+        response = self.client.get(reverse('barang_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['barang_list']), 10)
+
+    def test_barang_list_halaman_2(self):
+        """Test daftar barang halaman 3 tampil sisa data"""
+        response = self.client.get(
+            reverse('barang_list'), {'page': 3}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertGreater(len(response.context['barang_list']), 0)
+
+    def test_barang_pagination_dengan_filter_kategori(self):
+        """Test pagination barang tetap jalan saat filter kategori"""
+        response = self.client.get(
+            reverse('barang_list'),
+            {'kategori': self.kategori.pk, 'page': 1}
+        )
+        self.assertEqual(response.status_code, 200)
+        for barang in response.context['barang_list']:
+            self.assertEqual(barang.kategori, self.kategori)
+
+    def test_barang_pagination_dengan_search(self):
+        """Test pagination barang tetap jalan saat search"""
+        response = self.client.get(
+            reverse('barang_list'),
+            {'q': 'Barang 1', 'page': 1}
+        )
+        self.assertEqual(response.status_code, 200)
+        for barang in response.context['barang_list']:
+            self.assertIn('Barang 1', barang.nama)
+
+    # ===========================
+    # TEST PELANGGAN
+    # ===========================
+
+    def test_pelanggan_list_halaman_1(self):
+        """Test daftar pelanggan halaman 1 tampil 20 data"""
+        response = self.client.get(reverse('pelanggan_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['pelanggan_list']), 10)
+
+    def test_pelanggan_list_halaman_2(self):
+        """Test daftar pelanggan halaman 3 tampil sisa data"""
+        response = self.client.get(
+            reverse('pelanggan_list'), {'page': 3}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertGreater(len(response.context['pelanggan_list']), 0)
+
+    def test_pelanggan_pagination_dengan_search(self):
+        """Test pagination pelanggan tetap jalan saat search"""
+        response = self.client.get(
+            reverse('pelanggan_list'),
+            {'q': 'Pelanggan Paginasi', 'page': 1}
+        )
+        self.assertEqual(response.status_code, 200)
+        for p in response.context['pelanggan_list']:
+            self.assertIn('Pelanggan Paginasi', p.nama)
+
+    def test_pelanggan_page_invalid(self):
+        """Test halaman invalid tetap tampil halaman terakhir"""
+        response = self.client.get(
+            reverse('pelanggan_list'), {'page': 99999}
+        )
+        self.assertEqual(response.status_code, 200)

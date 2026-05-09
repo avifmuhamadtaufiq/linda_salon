@@ -1,0 +1,61 @@
+{% if page_obj.has_other_pages %}
+<div class="d-flex justify-content-between align-items-center mt-3 px-1">
+    <div style="font-size:0.83rem; color:var(--muted);">
+        Menampilkan {{ page_obj.start_index }}–{{ page_obj.end_index }}
+        dari {{ page_obj.paginator.count }} data
+    </div>
+    <nav>
+        <ul class="pagination mb-0" style="gap:4px;">
+
+            {% if page_obj.has_previous %}
+            <li>
+                <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.status %}status={{ request.GET.status }}&{% endif %}{% if request.GET.kategori %}kategori={{ request.GET.kategori }}&{% endif %}{% if request.GET.gudang %}gudang={{ request.GET.gudang }}&{% endif %}{% if request.GET.pengguna %}pengguna={{ request.GET.pengguna }}&{% endif %}page={{ page_obj.previous_page_number }}"
+                    style="display:flex; align-items:center; justify-content:center;
+                    width:34px; height:34px; border-radius:8px;
+                    border:1px solid #EDE8DC; background:white;
+                    color:var(--text); text-decoration:none; font-size:0.85rem;">
+                    ‹
+                </a>
+            </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li>
+                    <span style="display:flex; align-items:center;
+                        justify-content:center; width:34px; height:34px;
+                        border-radius:8px; background:var(--gold);
+                        color:white; font-size:0.85rem; font-weight:600;">
+                        {{ num }}
+                    </span>
+                </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li>
+                    <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.status %}status={{ request.GET.status }}&{% endif %}{% if request.GET.kategori %}kategori={{ request.GET.kategori }}&{% endif %}{% if request.GET.gudang %}gudang={{ request.GET.gudang }}&{% endif %}{% if request.GET.pengguna %}pengguna={{ request.GET.pengguna }}&{% endif %}page={{ num }}"
+                        style="display:flex; align-items:center;
+                        justify-content:center; width:34px; height:34px;
+                        border-radius:8px; border:1px solid #EDE8DC;
+                        background:white; color:var(--text);
+                        text-decoration:none; font-size:0.85rem;">
+                        {{ num }}
+                    </a>
+                </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+            <li>
+                <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.status %}status={{ request.GET.status }}&{% endif %}{% if request.GET.kategori %}kategori={{ request.GET.kategori }}&{% endif %}{% if request.GET.gudang %}gudang={{ request.GET.gudang }}&{% endif %}{% if request.GET.pengguna %}pengguna={{ request.GET.pengguna }}&{% endif %}page={{ page_obj.next_page_number }}"
+                    style="display:flex; align-items:center; justify-content:center;
+                    width:34px; height:34px; border-radius:8px;
+                    border:1px solid #EDE8DC; background:white;
+                    color:var(--text); text-decoration:none; font-size:0.85rem;">
+                    ›
+                </a>
+            </li>
+            {% endif %}
+
+        </ul>
+    </nav>
+</div>
+{% endif %}

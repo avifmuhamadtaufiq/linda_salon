@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.contrib import messages
 from django.db.models import Q
 from django.http import JsonResponse
@@ -15,8 +16,15 @@ def pelanggan_list(request):
         pelanggan = pelanggan.filter(
             Q(nama__icontains=q) | Q(hp__icontains=q)
         )
+
+    # Pagination
+    paginator = Paginator(pelanggan, 10)
+    page = request.GET.get('page', 1)
+    pelanggan_page = paginator.get_page(page)
+
     return render(request, 'pelanggan/pelanggan_list.html', {
-        'pelanggan_list': pelanggan,
+        'pelanggan_list': pelanggan_page,
+        'page_obj': pelanggan_page,
         'q': q,
     })
 

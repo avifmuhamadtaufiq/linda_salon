@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Q
@@ -7,6 +8,7 @@ from django.utils import timezone
 from .models import Transaksi, DetailTransaksi
 from apps.inventory.models import Barang
 from apps.pelanggan.models import Pelanggan
+
 import datetime
 from decimal import Decimal
 
@@ -61,8 +63,14 @@ def transaksi_list(request):
         transaksi__isnull=False
     ).distinct().order_by('first_name')
 
+    # Pagination
+    paginator = Paginator(transaksi, 10)
+    page = request.GET.get('page', 1)
+    transaksi_page = paginator.get_page(page)
+
     return render(request, 'transactions/transaksi_list.html', {
-        'transaksi_list': transaksi,
+        'transaksi_list': transaksi_page,
+        'page_obj': transaksi_page,
         'q': q,
         'selected_status': status,
         'tanggal': tanggal,

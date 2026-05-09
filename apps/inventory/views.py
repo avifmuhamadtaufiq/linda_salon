@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.contrib import messages
 from django.db.models import Q, Sum
 from django.utils import timezone
@@ -61,21 +62,27 @@ def barang_list(request):
     kondisi = request.GET.get('kondisi', '')
     gudang_id = request.GET.get('gudang', '')
 
-    barang = Barang.objects.select_related('kategori').all()
+    barang = Barang.objects.select_related('kategori', 'gudang').all()
     if q:
         barang = barang.filter(Q(nama__icontains=q) | Q(kode__icontains=q))
     if kategori_id:
         barang = barang.filter(kategori_id=kategori_id)
     if kondisi:
         barang = barang.filter(kondisi=kondisi)
-    if gudang_id:                              
+    if gudang_id:
         barang = barang.filter(gudang_id=gudang_id)
 
     kategori_list = Kategori.objects.all()
     gudang_list = Gudang.objects.filter(aktif=True)
 
+    # Pagination
+    paginator = Paginator(barang, 10)
+    page = request.GET.get('page', 1)
+    barang_page = paginator.get_page(page)
+
     return render(request, 'inventory/barang_list.html', {
-        'barang_list': barang,
+        'barang_list': barang_page,
+        'page_obj': barang_page,
         'kategori_list': kategori_list,
         'gudang_list': gudang_list,
         'q': q,
@@ -83,7 +90,7 @@ def barang_list(request):
         'selected_kondisi': kondisi,
         'selected_gudang': gudang_id,
     })
-
+    
 
 @login_required
 def barang_detail(request, pk):
