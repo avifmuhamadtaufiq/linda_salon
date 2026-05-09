@@ -1,24 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}Laporan Keuangan{% endblock %}
 {% block page_title %}Laporan Keuangan{% endblock %}
-
-{% block topbar_actions %}
-<a href="?bulan={{ bulan }}&tahun={{ tahun }}&print=1"
-    target="_blank" class="btn btn-outline-gold btn-sm">
-    <i class="bi bi-printer me-1"></i> Print
-</a>
-<a href="?bulan={{ bulan }}&tahun={{ tahun }}&pdf=1"
-    target="_blank" class="btn btn-gold btn-sm">
-    <i class="bi bi-file-earmark-pdf me-1"></i> PDF
-</a>
-<a href="?bulan={{ bulan }}&tahun={{ tahun }}&excel=1"
-    class="btn btn-sm"
-    style="background:#1D6F42; color:white; border-radius:8px;
-    padding:7px 16px; font-size:0.87rem;">
-    <i class="bi bi-file-earmark-excel me-1"></i> Excel
-</a>
-{% endblock %}
-
 {% block content %}
 <div class="card mb-3">
     <div class="card-header">
