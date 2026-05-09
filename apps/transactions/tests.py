@@ -1644,3 +1644,232 @@ class JadwalViewTest(TestCase):
         )
         response = self.client.get(reverse('jadwal'))
         self.assertNotContains(response, 'SW20260508JD7')
+
+class SearchBarangFormTest(TestCase):
+    """Test fitur search barang di form transaksi"""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='admin_search_barang',
+            password='admin123'
+        )
+        UserProfile.objects.create(user=self.user, role='admin')
+        self.client.login(username='admin_search_barang', password='admin123')
+
+        # Buat gudang
+        from apps.inventory.models import Gudang
+        self.gudang_andir = Gudang.objects.create(
+            nama='Gudang Andir',
+            alamat='Jl. Andir No. 1',
+            aktif=True
+        )
+        self.gudang_kubang = Gudang.objects.create(
+            nama='Gudang Kubang',
+            alamat='Jl. Kubang No. 2',
+            aktif=True
+        )
+
+        # Buat kategori
+        self.kategori = Kategori.objects.create(nama='Kursi')
+
+        # Buat barang dengan stok tersedia
+        self.barang_andir = Barang.objects.create(
+            kode='SB001',
+            nama='Kursi Tiffany Gold',
+            kategori=self.kategori,
+            gudang=self.gudang_andir,
+            stok_total=10,
+            stok_tersedia=10,
+            harga_sewa=Decimal('15000'),
+            kondisi='baik'
+        )
+        self.barang_kubang = Barang.objects.create(
+            kode='SB002',
+            nama='Meja Bundar Putih',
+            kategori=self.kategori,
+            gudang=self.gudang_kubang,
+            stok_total=5,
+            stok_tersedia=5,
+            harga_sewa=Decimal('25000'),
+            kondisi='baik'
+        )
+
+        # Barang habis stok - tidak boleh muncul di form
+        self.barang_habis = Barang.objects.create(
+            kode='SB003',
+            nama='Tenda Habis',
+            kategori=self.kategori,
+            gudang=self.gudang_andir,
+            stok_total=5,
+            stok_tersedia=0,
+            harga_sewa=Decimal('50000'),
+            kondisi='baik'
+        )
+
+        # Barang rusak - tidak boleh muncul di form
+        self.barang_rusak = Barang.objects.create(
+            kode='SB004',
+            nama='Kursi Rusak',
+            kategori=self.kategori,
+            gudang=self.gudang_andir,
+            stok_total=5,
+            stok_tersedia=5,
+            harga_sewa=Decimal('10000'),
+            kondisi='rusak_berat'
+        )
+
+    def test_form_transaksi_tampil_barang_tersedia(self):
+        """Test form transaksi tampilkan barang yang tersedia"""
+        response = self.client.get(reverse('transaksi_create'))
+        self.assertEqual(response.status_code, 200)
+        # Barang tersedia tampil
+        self.assertContains(response, 'Kursi Tiffany Gold')
+        self.assertContains(response, 'Meja Bundar Putih')
+
+    def test_form_transaksi_tidak_tampil_barang_habis(self):
+        """Test form transaksi tidak tampilkan barang habis stok"""
+        response = self.client.get(reverse('transaksi_create'))
+        self.assertNotContains(response, 'Tenda Habis')
+
+    def test_form_transaksi_tidak_tampil_barang_rusak(self):
+        """Test form transaksi tidak tampilkan barang rusak"""
+        response = self.client.get(reverse('transaksi_create'))
+        self.assertNotContains(response, 'Kursi Rusak')
+
+    def test_form_transaksi_tampil_info_gudang(self):
+        """Test form transaksi tampilkan info gudang barang"""
+        response = self.client.get(reverse('transaksi_create'))
+        self.assertContains(response, 'Gudang Andir')
+        self.assertContains(response, 'Gudang Kubang')
+
+    def test_form_transaksi_tampil_alamat_gudang(self):
+        """Test form transaksi tampilkan alamat gudang"""
+        response = self.client.get(reverse('transaksi_create'))
+        self.assertContains(response, 'Jl. Andir No. 1')
+        self.assertContains(response, 'Jl. Kubang No. 2')
+
+    def test_form_transaksi_tampil_harga_barang(self):
+        """Test form transaksi tampilkan harga barang"""
+        response = self.client.get(reverse('transaksi_create'))
+        self.assertContains(response, '15000')
+        self.assertContains(response, '25000')
+
+    def test_form_transaksi_tampil_stok_barang(self):
+        """Test form transaksi tampilkan stok barang"""
+        response = self.client.get(reverse('transaksi_create'))
+        content = response.content.decode('utf-8')
+        # Cek stok nilai ada di JavaScript data
+        self.assertIn('stok: 10', content)
+        self.assertIn('stok: 5', content)
+
+    def test_form_transaksi_tampil_kode_barang(self):
+        """Test form transaksi tampilkan kode barang"""
+        response = self.client.get(reverse('transaksi_create'))
+        self.assertContains(response, 'SB001')
+        self.assertContains(response, 'SB002')
+
+    def test_transaksi_create_dengan_barang_dari_search(self):
+        """Test buat transaksi berhasil dengan barang yang dipilih"""
+        pelanggan = Pelanggan.objects.create(
+            nama='Test Search',
+            hp='08100000030'
+        )
+        response = self.client.post(
+            reverse('transaksi_create'),
+            {
+                'pelanggan_id': pelanggan.pk,
+                'tanggal_sewa': '2026-05-08',
+                'tanggal_kembali': '2026-05-10',
+                'acara': 'Pernikahan Test',
+                'uang_muka': '50000',
+                'catatan': '',
+                'barang_id': [self.barang_andir.pk],
+                'jumlah': ['3'],
+                f'kondisi_keluar_{self.barang_andir.pk}': 'Baik',
+            }
+        )
+        # Redirect setelah berhasil
+        self.assertEqual(response.status_code, 302)
+
+        # Transaksi tersimpan
+        transaksi = Transaksi.objects.filter(
+            pelanggan_nama='Test Search'
+        ).first()
+        self.assertIsNotNone(transaksi)
+
+        # Stok berkurang
+        self.barang_andir.refresh_from_db()
+        self.assertEqual(self.barang_andir.stok_tersedia, 7)
+
+        # Subtotal benar: 15000 x 3 x 2 hari = 90000
+        detail = transaksi.detail.first()
+        self.assertEqual(detail.subtotal, Decimal('90000'))
+        self.assertEqual(detail.jumlah_hari, 2)
+
+    def test_transaksi_create_stok_tidak_cukup(self):
+        """Test buat transaksi gagal kalau stok tidak cukup"""
+        pelanggan = Pelanggan.objects.create(
+            nama='Test Stok Kurang',
+            hp='08100000031'
+        )
+        response = self.client.post(
+            reverse('transaksi_create'),
+            {
+                'pelanggan_id': pelanggan.pk,
+                'tanggal_sewa': '2026-05-08',
+                'tanggal_kembali': '2026-05-10',
+                'uang_muka': '0',
+                'barang_id': [self.barang_andir.pk],
+                'jumlah': ['999'],  # melebihi stok
+                f'kondisi_keluar_{self.barang_andir.pk}': 'Baik',
+            }
+        )
+        # Tidak redirect, tetap di halaman form dengan pesan error
+        self.assertEqual(response.status_code, 200)
+
+        # Stok tidak berubah
+        self.barang_andir.refresh_from_db()
+        self.assertEqual(self.barang_andir.stok_tersedia, 10)
+
+    def test_transaksi_create_multi_barang(self):
+        """Test buat transaksi dengan beberapa barang dari gudang berbeda"""
+        pelanggan = Pelanggan.objects.create(
+            nama='Test Multi Barang',
+            hp='08100000032'
+        )
+        response = self.client.post(
+            reverse('transaksi_create'),
+            {
+                'pelanggan_id': pelanggan.pk,
+                'tanggal_sewa': '2026-05-08',
+                'tanggal_kembali': '2026-05-09',
+                'uang_muka': '0',
+                'barang_id': [
+                    self.barang_andir.pk,
+                    self.barang_kubang.pk
+                ],
+                'jumlah': ['2', '1'],
+                f'kondisi_keluar_{self.barang_andir.pk}': 'Baik',
+                f'kondisi_keluar_{self.barang_kubang.pk}': 'Baik',
+            }
+        )
+        self.assertEqual(response.status_code, 302)
+
+        # Cek transaksi tersimpan
+        transaksi = Transaksi.objects.filter(
+            pelanggan_nama='Test Multi Barang'
+        ).first()
+        self.assertIsNotNone(transaksi)
+
+        # Cek 2 detail tersimpan
+        self.assertEqual(transaksi.detail.count(), 2)
+
+        # Cek stok berkurang di masing-masing barang
+        self.barang_andir.refresh_from_db()
+        self.barang_kubang.refresh_from_db()
+        self.assertEqual(self.barang_andir.stok_tersedia, 8)
+        self.assertEqual(self.barang_kubang.stok_tersedia, 4)
+
+        # Cek total: (15000 x 2 x 1) + (25000 x 1 x 1) = 55000
+        self.assertEqual(transaksi.total_harga, Decimal('55000'))
