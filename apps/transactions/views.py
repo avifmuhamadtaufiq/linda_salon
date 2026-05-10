@@ -343,3 +343,13 @@ def transaksi_print_persiapan(request, pk):
         'detail': detail,
         'generated_at': timezone.now(),
     })
+
+@login_required
+def transaksi_invoice(request, pk):
+    transaksi = get_object_or_404(Transaksi, pk=pk)
+    detail = transaksi.detail.select_related('barang', 'barang__gudang')
+    return render(request, 'transactions/transaksi_invoice.html', {
+        'transaksi': transaksi,
+        'detail': detail,
+        'generated_at': timezone.now(),
+    })
