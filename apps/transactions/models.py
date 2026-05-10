@@ -24,6 +24,10 @@ class Transaksi(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='menunggu')
     total_harga = models.DecimalField(max_digits=15, decimal_places=0, default=0)
     uang_muka = models.DecimalField(max_digits=15, decimal_places=0, default=0)
+    diskon = models.DecimalField(
+        max_digits=15, decimal_places=0, default=0,
+        verbose_name='Diskon'
+    )
     sisa_bayar = models.DecimalField(max_digits=15, decimal_places=0, default=0)
     catatan = models.TextField(blank=True)
     alasan_batal = models.TextField(blank=True, null=True)
@@ -41,6 +45,11 @@ class Transaksi(models.Model):
 
     def __str__(self):
         return f"{self.no_transaksi} - {self.pelanggan_nama}"
+
+    @property
+    def total_setelah_diskon(self):
+        return self.total_harga - self.diskon
+
 
     class Meta:
         verbose_name = 'Transaksi'

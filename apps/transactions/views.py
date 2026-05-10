@@ -101,6 +101,9 @@ def transaksi_create(request):
                 uang_muka_raw = request.POST.get('uang_muka', '0') or '0'
                 uang_muka = Decimal(str(uang_muka_raw))
 
+                diskon_raw = request.POST.get('diskon', '0') or '0'  
+                diskon = Decimal(str(diskon_raw))                    
+                
                 tanggal_sewa = request.POST['tanggal_sewa']
                 tanggal_kembali = request.POST['tanggal_kembali']
                 jumlah_hari = hitung_jumlah_hari(tanggal_sewa, tanggal_kembali)
@@ -137,6 +140,7 @@ def transaksi_create(request):
                     tanggal_sewa=tanggal_sewa,
                     tanggal_kembali=tanggal_kembali,
                     uang_muka=uang_muka,
+                    diskon=diskon,
                     catatan=request.POST.get('catatan', ''),
                     dibuat_oleh=request.user,
                     total_harga=Decimal('0'),
@@ -173,7 +177,7 @@ def transaksi_create(request):
                     barang.save()
 
                 trx.total_harga = total
-                trx.sisa_bayar = total - uang_muka
+                trx.sisa_bayar = total - diskon - uang_muka
                 trx.save()
 
                 if pelanggan_obj:

@@ -1783,26 +1783,20 @@ class SearchBarangFormTest(TestCase):
                 'tanggal_kembali': '2026-05-10',
                 'acara': 'Pernikahan Test',
                 'uang_muka': '50000',
+                'diskon': '0',  # tambah ini
                 'catatan': '',
                 'barang_id': [self.barang_andir.pk],
                 'jumlah': ['3'],
                 f'kondisi_keluar_{self.barang_andir.pk}': 'Baik',
             }
         )
-        # Redirect setelah berhasil
         self.assertEqual(response.status_code, 302)
-
-        # Transaksi tersimpan
         transaksi = Transaksi.objects.filter(
             pelanggan_nama='Test Search'
         ).first()
         self.assertIsNotNone(transaksi)
-
-        # Stok berkurang
         self.barang_andir.refresh_from_db()
         self.assertEqual(self.barang_andir.stok_tersedia, 7)
-
-        # Subtotal benar: 15000 x 3 x 2 hari = 90000
         detail = transaksi.detail.first()
         self.assertEqual(detail.subtotal, Decimal('90000'))
         self.assertEqual(detail.jumlah_hari, 2)
@@ -1845,6 +1839,7 @@ class SearchBarangFormTest(TestCase):
                 'tanggal_sewa': '2026-05-08',
                 'tanggal_kembali': '2026-05-09',
                 'uang_muka': '0',
+                'diskon': '0',  # tambah ini
                 'barang_id': [
                     self.barang_andir.pk,
                     self.barang_kubang.pk
@@ -1855,23 +1850,15 @@ class SearchBarangFormTest(TestCase):
             }
         )
         self.assertEqual(response.status_code, 302)
-
-        # Cek transaksi tersimpan
         transaksi = Transaksi.objects.filter(
             pelanggan_nama='Test Multi Barang'
         ).first()
         self.assertIsNotNone(transaksi)
-
-        # Cek 2 detail tersimpan
         self.assertEqual(transaksi.detail.count(), 2)
-
-        # Cek stok berkurang di masing-masing barang
         self.barang_andir.refresh_from_db()
         self.barang_kubang.refresh_from_db()
         self.assertEqual(self.barang_andir.stok_tersedia, 8)
         self.assertEqual(self.barang_kubang.stok_tersedia, 4)
-
-        # Cek total: (15000 x 2 x 1) + (25000 x 1 x 1) = 55000
         self.assertEqual(transaksi.total_harga, Decimal('55000'))
 
 
@@ -2042,3 +2029,196 @@ class PaginationTest(TestCase):
             reverse('pelanggan_list'), {'page': 99999}
         )
         self.assertEqual(response.status_code, 200)
+
+class DiskonTransaksiTest(TestCase):
+    """Test fitur diskon nominal di transaksi"""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='admin_diskon',
+            password='admin123'
+        )
+        UserProfile.objects.create(user=self.user, role='admin')
+        self.client.login(username='admin_diskon', password='admin123')
+
+        self.barang = Barang.objects.create(
+            kode='DK001',
+            nama='Barang Diskon Test',
+            stok_total=10,
+            stok_tersedia=10,
+            harga_sewa=Decimal('100000'),
+            kondisi='baik'
+        )
+        self.pelanggan = Pelanggan.objects.create(
+            nama='Test Diskon',
+            hp='08100000040'
+        )
+
+    def test_transaksi_dengan_diskon(self):
+        """Test buat transaksi dengan diskon"""
+        response = self.client.post(
+            reverse('transaksi_create'),
+            {
+                'pelanggan_id': self.pelanggan.pk,
+                'tanggal_sewa': '2026-05-09',
+                'tanggal_kembali': '2026-05-10',
+                'uang_muka': '50000',
+                'diskon': '25000',
+                'catatan': '',
+                'barang_id': [self.barang.pk],
+                'jumlah': ['2'],
+                f'kondisi_keluar_{self.barang.pk}': 'Baik',
+            }
+        )
+        self.assertEqual(response.status_code, 302)
+
+        transaksi = Transaksi.objects.filter(
+            pelanggan_nama='Test Diskon'
+        ).first()
+        self.assertIsNotNone(transaksi)
+
+        # Total: 100000 x 2 x 1 hari = 200000
+        self.assertEqual(transaksi.total_harga, Decimal('200000'))
+
+        # Diskon tersimpan
+        self.assertEqual(transaksi.diskon, Decimal('25000'))
+
+        # Sisa bayar: 200000 - 25000 - 50000 = 125000
+        self.assertEqual(transaksi.sisa_bayar, Decimal('125000'))
+
+    def test_transaksi_tanpa_diskon(self):
+        """Test buat transaksi tanpa diskon"""
+        response = self.client.post(
+            reverse('transaksi_create'),
+            {
+                'pelanggan_id': self.pelanggan.pk,
+                'tanggal_sewa': '2026-05-09',
+                'tanggal_kembali': '2026-05-10',
+                'uang_muka': '50000',
+                'diskon': '0',
+                'catatan': '',
+                'barang_id': [self.barang.pk],
+                'jumlah': ['1'],
+                f'kondisi_keluar_{self.barang.pk}': 'Baik',
+            }
+        )
+        self.assertEqual(response.status_code, 302)
+
+        transaksi = Transaksi.objects.filter(
+            pelanggan_nama='Test Diskon'
+        ).first()
+
+        # Diskon 0
+        self.assertEqual(transaksi.diskon, Decimal('0'))
+
+        # Sisa bayar: 100000 - 0 - 50000 = 50000
+        self.assertEqual(transaksi.sisa_bayar, Decimal('50000'))
+
+    def test_total_setelah_diskon_property(self):
+        """Test property total_setelah_diskon"""
+        transaksi = Transaksi.objects.create(
+            no_transaksi='SW20260509DK1',
+            pelanggan_nama='Test Diskon Property',
+            pelanggan_hp='08100000041',
+            tanggal_sewa=datetime.date(2026, 5, 9),
+            tanggal_kembali=datetime.date(2026, 5, 10),
+            uang_muka=Decimal('50000'),
+            diskon=Decimal('30000'),
+            total_harga=Decimal('300000'),
+            sisa_bayar=Decimal('220000'),
+            status='menunggu',
+            dibuat_oleh=self.user,
+        )
+        # total_setelah_diskon = 300000 - 30000 = 270000
+        self.assertEqual(
+            transaksi.total_setelah_diskon,
+            Decimal('270000')
+        )
+
+    def test_diskon_tampil_di_detail(self):
+        """Test diskon tampil di halaman detail transaksi"""
+        transaksi = Transaksi.objects.create(
+            no_transaksi='SW20260509DK2',
+            pelanggan_nama='Test Diskon Detail',
+            pelanggan_hp='08100000042',
+            tanggal_sewa=datetime.date(2026, 5, 9),
+            tanggal_kembali=datetime.date(2026, 5, 10),
+            uang_muka=Decimal('50000'),
+            diskon=Decimal('25000'),
+            total_harga=Decimal('200000'),
+            sisa_bayar=Decimal('125000'),
+            status='menunggu',
+            dibuat_oleh=self.user,
+        )
+        response = self.client.get(
+            reverse('transaksi_detail', args=[transaksi.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        # Diskon tampil
+        self.assertContains(response, '25.000')
+        # Sisa bayar tampil
+        self.assertContains(response, '125.000')
+
+    def test_diskon_tidak_tampil_jika_nol(self):
+        """Test diskon tidak tampil di detail kalau diskon 0"""
+        transaksi = Transaksi.objects.create(
+            no_transaksi='SW20260509DK3',
+            pelanggan_nama='Test Tanpa Diskon',
+            pelanggan_hp='08100000043',
+            tanggal_sewa=datetime.date(2026, 5, 9),
+            tanggal_kembali=datetime.date(2026, 5, 10),
+            uang_muka=Decimal('0'),
+            diskon=Decimal('0'),
+            total_harga=Decimal('100000'),
+            sisa_bayar=Decimal('100000'),
+            status='menunggu',
+            dibuat_oleh=self.user,
+        )
+        response = self.client.get(
+            reverse('transaksi_detail', args=[transaksi.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        # Label diskon tidak tampil
+        self.assertNotContains(response, 'Total Setelah Diskon')
+
+    def test_sisa_bayar_dengan_diskon_dp(self):
+        """Test sisa bayar = total - diskon - dp"""
+        total = Decimal('500000')
+        diskon = Decimal('50000')
+        dp = Decimal('100000')
+        expected_sisa = Decimal('350000')
+
+        transaksi = Transaksi.objects.create(
+            no_transaksi='SW20260509DK4',
+            pelanggan_nama='Test Sisa Bayar',
+            pelanggan_hp='08100000044',
+            tanggal_sewa=datetime.date(2026, 5, 9),
+            tanggal_kembali=datetime.date(2026, 5, 11),
+            uang_muka=dp,
+            diskon=diskon,
+            total_harga=total,
+            sisa_bayar=total - diskon - dp,
+            status='menunggu',
+            dibuat_oleh=self.user,
+        )
+        self.assertEqual(transaksi.sisa_bayar, expected_sisa)
+
+    def test_diskon_muncul_di_list_transaksi(self):
+        """Test transaksi dengan diskon tetap muncul di daftar"""
+        Transaksi.objects.create(
+            no_transaksi='SW20260509DK5',
+            pelanggan_nama='Test Diskon List',
+            pelanggan_hp='08100000045',
+            tanggal_sewa=datetime.date(2026, 5, 9),
+            tanggal_kembali=datetime.date(2026, 5, 10),
+            uang_muka=Decimal('0'),
+            diskon=Decimal('75000'),
+            total_harga=Decimal('300000'),
+            sisa_bayar=Decimal('225000'),
+            status='menunggu',
+            dibuat_oleh=self.user,
+        )
+        response = self.client.get(reverse('transaksi_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'SW20260509DK5')

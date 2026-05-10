@@ -98,6 +98,20 @@
                 <span style="font-size:0.83rem; color:var(--muted);">Total</span>
                 <strong>{{ transaksi.total_harga|rupiah }}</strong>
             </div>
+            {% if transaksi.diskon > 0 %}
+            <div class="d-flex justify-content-between mb-2">
+                <span style="font-size:0.83rem; color:var(--muted);">Diskon</span>
+                <span style="color:#B94040;">- {{ transaksi.diskon|rupiah }}</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+                <span style="font-size:0.83rem; color:var(--muted);">
+                    Total Setelah Diskon
+                </span>
+                <strong style="color:var(--gold-dark);">
+                    {{ transaksi.total_setelah_diskon|rupiah }}
+                </strong>
+            </div>
+            {% endif %}
             <div class="d-flex justify-content-between mb-2">
                 <span style="font-size:0.83rem; color:var(--muted);">Uang Muka</span>
                 <span style="color:#20948A;">{{ transaksi.uang_muka|rupiah }}</span>
