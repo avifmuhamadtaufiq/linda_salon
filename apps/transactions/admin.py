@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Transaksi, DetailTransaksi
+from .models import Transaksi, DetailTransaksi, Pembayaran
 
 class DetailInline(admin.TabularInline):
     model = DetailTransaksi
@@ -11,3 +11,8 @@ class TransaksiAdmin(admin.ModelAdmin):
     list_filter = ['status', 'tanggal_sewa']
     search_fields = ['no_transaksi', 'pelanggan_nama']
     inlines = [DetailInline]
+
+@admin.register(Pembayaran)
+class PembayaranAdmin(admin.ModelAdmin):
+    list_display = ['transaksi', 'jumlah', 'metode', 'dicatat_oleh', 'created_at']
+    list_filter = ['metode']

@@ -117,14 +117,6 @@
                 </strong>
             </div>
             {% endif %}
-            <div class="d-flex justify-content-between mb-2">
-                <span style="font-size:0.83rem; color:var(--muted);">Uang Muka</span>
-                <span style="color:#20948A;">{{ transaksi.uang_muka|rupiah }}</span>
-            </div>
-            <div class="d-flex justify-content-between">
-                <span style="font-size:0.83rem; color:var(--muted);">Sisa Bayar</span>
-                <strong style="color:#B94040;">{{ transaksi.sisa_bayar|rupiah }}</strong>
-            </div>
         </div>
         <div style="font-size:0.78rem; color:var(--muted); text-align:center;">
             Dibuat oleh: {{ transaksi.dibuat_oleh.get_full_name|default:transaksi.dibuat_oleh.username }}<br>
@@ -172,6 +164,211 @@
                         </tr>
                     </tfoot>
                 </table>
+            </div>
+        </div>
+        <!-- Riwayat Pembayaran -->
+        <div class="card mt-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Riwayat Pembayaran</span>
+                {% if transaksi.status != 'batal' %}
+                {% if request.user.profile.role == 'admin' or transaksi.dibuat_oleh == request.user %}
+                {% if not transaksi.sudah_lunas %}
+                <button type="button" class="btn btn-gold btn-sm"
+                    data-bs-toggle="modal" data-bs-target="#modalTambahBayar">
+                    <i class="bi bi-plus-lg me-1"></i> Tambah Pembayaran
+                </button>
+                {% endif %}
+                {% endif %}
+                {% endif %}
+            </div>
+
+            <!-- Summary pembayaran -->
+            {% with total_bayar=transaksi.pembayaran.all|length %}
+            <div class="p-3" style="background:#FAF7F0; border-bottom:1px solid #EDE8DC;">
+                <div class="row g-2 text-center">
+                    <div class="col-4">
+                        <div style="font-size:0.72rem; color:var(--muted);">
+                            Total Tagihan
+                        </div>
+                        <div style="font-weight:700; font-size:0.95rem;">
+                            {{ transaksi.total_setelah_diskon|rupiah }}
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div style="font-size:0.72rem; color:var(--muted);">
+                            Sudah Dibayar
+                        </div>
+                        <div style="font-weight:700; font-size:0.95rem; color:#20948A;">
+                            {{ transaksi.total_sudah_bayar|rupiah }}
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div style="font-size:0.72rem; color:var(--muted);">
+                            Sisa Bayar
+                        </div>
+                        {% if transaksi.sudah_lunas %}
+                        <div style="font-weight:700; font-size:0.95rem; color:#20948A;">
+                            ✅ LUNAS
+                        </div>
+                        {% else %}
+                        <div style="font-size:0.78rem; color:var(--muted); margin-top:4px;">
+                            <strong style="color:#B94040;">
+                                {{ transaksi.sisa_bayar_real|rupiah }}
+                            </strong>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endwith %}
+
+            <!-- Daftar pembayaran -->
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>Jumlah</th>
+                            <th>Metode</th>
+                            <th>Keterangan</th>
+                            <th>Dicatat Oleh</th>
+                            {% if request.user.profile.role == 'admin' %}
+                            <th></th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- DP sebagai pembayaran pertama -->
+                        {% if transaksi.uang_muka > 0 %}
+                        <tr style="background:#F0FBF7;">
+                            <td style="font-size:0.83rem;">
+                                {{ transaksi.created_at|date:"d M Y" }}
+                            </td>
+                            <td style="font-weight:600; color:#20948A;">
+                                {{ transaksi.uang_muka|rupiah }}
+                            </td>
+                            <td>
+                                <span style="background:rgba(32,148,137,0.1);
+                                    color:#20948A; padding:2px 8px;
+                                    border-radius:20px; font-size:0.75rem;">
+                                    Uang Muka / DP
+                                </span>
+                            </td>
+                            <td style="font-size:0.83rem; color:var(--muted);">-</td>
+                            <td style="font-size:0.83rem; color:var(--muted);">
+                                {{ transaksi.dibuat_oleh.get_full_name|default:transaksi.dibuat_oleh.username }}
+                            </td>
+                            {% if request.user.profile.role == 'admin' %}<td></td>{% endif %}
+                        </tr>
+                        {% endif %}
+
+                        {% for bayar in transaksi.pembayaran.all %}
+                        <tr>
+                            <td style="font-size:0.83rem;">
+                                {{ bayar.created_at|date:"d M Y H:i" }}
+                            </td>
+                            <td style="font-weight:600; color:#20948A;">
+                                {{ bayar.jumlah|rupiah }}
+                            </td>
+                            <td>
+                                <span style="background:rgba(60,120,200,0.1);
+                                    color:#3C78C8; padding:2px 8px;
+                                    border-radius:20px; font-size:0.75rem;">
+                                    {{ bayar.get_metode_display }}
+                                </span>
+                            </td>
+                            <td style="font-size:0.83rem; color:var(--muted);">
+                                {{ bayar.keterangan|default:"-" }}
+                            </td>
+                            <td style="font-size:0.83rem; color:var(--muted);">
+                                {{ bayar.dicatat_oleh.get_full_name|default:bayar.dicatat_oleh.username }}
+                            </td>
+                            {% if request.user.profile.role == 'admin' %}
+                            <td>
+                                <form method="post"
+                                    action="{% url 'hapus_pembayaran' transaksi.pk bayar.pk %}"
+                                    onsubmit="return confirm('Hapus pembayaran ini?')">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                        style="background:none; border:none;
+                                        color:#B94040; cursor:pointer; font-size:1rem;">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                </form>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% empty %}
+                        {% if not transaksi.uang_muka %}
+                        <tr>
+                            <td colspan="6" class="text-center py-3"
+                                style="color:var(--muted);">
+                                Belum ada pembayaran
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <!-- Modal Tambah Pembayaran -->
+        <div class="modal fade" id="modalTambahBayar" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content" style="border-radius:12px; border:1px solid #EDE8DC;">
+                    <div class="modal-header" style="border-bottom:1px solid #EDE8DC;">
+                        <h5 class="modal-title"
+                            style="font-family:'Cormorant Garamond',serif; font-size:1.2rem;">
+                            Tambah Pembayaran
+                        </h5>
+                        <button type="button" class="btn-close"
+                            data-bs-dismiss="modal"></button>
+                    </div>
+                    <form method="post"
+                        action="{% url 'tambah_pembayaran' transaksi.pk %}">
+                        {% csrf_token %}
+                        <div class="modal-body p-4">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    Jumlah Pembayaran (Rp) *
+                                </label>
+                                <input type="number" name="jumlah"
+                                    class="form-control" min="1"
+                                    placeholder="Contoh: 200000" required>
+                                <div style="font-size:0.78rem; color:var(--muted); margin-top:4px;">
+                                    Sisa bayar:
+                                    <strong style="color:#B94040;">
+                                        {{ transaksi.sisa_bayar|rupiah }}
+                                    </strong>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Metode Pembayaran</label>
+                                <select name="metode" class="form-select">
+                                    <option value="tunai">Tunai</option>
+                                    <option value="transfer">Transfer Bank</option>
+                                    <option value="qris">QRIS</option>
+                                    <option value="lainnya">Lainnya</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Keterangan</label>
+                                <input type="text" name="keterangan"
+                                    class="form-control"
+                                    placeholder="Contoh: Pelunasan, Cicilan 1, dll">
+                            </div>
+                        </div>
+                        <div class="modal-footer" style="border-top:1px solid #EDE8DC;">
+                            <button type="button"
+                                class="btn btn-outline-gold btn-sm"
+                                data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-gold btn-sm">
+                                <i class="bi bi-check-lg me-1"></i>
+                                Simpan Pembayaran
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
         {% if transaksi.catatan %}

@@ -12,4 +12,6 @@ urlpatterns = [
     path('jadwal/', views.jadwal_view, name='jadwal'),
     path('<int:pk>/print-persiapan/', views.transaksi_print_persiapan, name='transaksi_print_persiapan'),
     path('<int:pk>/invoice/', views.transaksi_invoice, name='transaksi_invoice'),
+    path('<int:pk>/pembayaran/tambah/', views.tambah_pembayaran, name='tambah_pembayaran'),
+    path('<int:pk>/pembayaran/<int:pembayaran_pk>/hapus/', views.hapus_pembayaran, name='hapus_pembayaran'),
 ]

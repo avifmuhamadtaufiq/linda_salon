@@ -3,9 +3,9 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.utils import timezone
-from .models import Transaksi, DetailTransaksi
+from .models import Transaksi, DetailTransaksi, Pembayaran
 from apps.inventory.models import Barang
 from apps.pelanggan.models import Pelanggan
 
@@ -353,3 +353,110 @@ def transaksi_invoice(request, pk):
         'detail': detail,
         'generated_at': timezone.now(),
     })
+
+@login_required
+def tambah_pembayaran(request, pk):
+    transaksi = get_object_or_404(Transaksi, pk=pk)
+
+    # Cek status batal
+    if transaksi.status == 'batal':
+        messages.error(request, 'Transaksi yang dibatalkan tidak bisa ditambah pembayaran.')
+        return redirect('transaksi_detail', pk=transaksi.pk)
+
+    # Cek sudah lunas
+    if transaksi.sudah_lunas:
+        messages.error(request, 'Transaksi ini sudah lunas!')
+        return redirect('transaksi_detail', pk=transaksi.pk)
+
+    if not cek_akses_transaksi(request.user, transaksi):
+        messages.error(request, 'Anda tidak memiliki akses untuk transaksi ini.')
+        return redirect('transaksi_detail', pk=transaksi.pk)
+
+    if not cek_akses_transaksi(request.user, transaksi):
+        messages.error(
+            request,
+            'Anda tidak memiliki akses untuk transaksi ini.'
+        )
+        return redirect('transaksi_detail', pk=transaksi.pk)
+
+    if request.method == 'POST':
+        jumlah_raw = request.POST.get('jumlah', '0') or '0'
+        try:
+            jumlah = Decimal(str(jumlah_raw))
+        except:
+            messages.error(request, 'Jumlah pembayaran tidak valid.')
+            return redirect('transaksi_detail', pk=transaksi.pk)
+
+        if jumlah <= 0:
+            messages.error(
+                request, 'Jumlah pembayaran harus lebih dari 0.'
+            )
+            return redirect('transaksi_detail', pk=transaksi.pk)
+
+        # Cek apakah melebihi sisa bayar
+        sisa = transaksi.sisa_bayar_real
+        if jumlah > sisa:
+            messages.error(
+                request,
+                f'Jumlah pembayaran (Rp {int(jumlah):,}) melebihi '
+                f'sisa bayar (Rp {int(sisa):,}). '
+                f'Maksimal pembayaran: Rp {int(sisa):,}.'
+            )
+            return redirect('transaksi_detail', pk=transaksi.pk)
+
+        # Cek sudah lunas
+        if transaksi.sudah_lunas:
+            messages.error(
+                request, 'Transaksi ini sudah lunas!'
+            )
+            return redirect('transaksi_detail', pk=transaksi.pk)
+
+        Pembayaran.objects.create(
+            transaksi=transaksi,
+            jumlah=jumlah,
+            metode=request.POST.get('metode', 'tunai'),
+            keterangan=request.POST.get('keterangan', ''),
+            dicatat_oleh=request.user,
+        )
+
+        # Update sisa bayar di database
+        transaksi.sisa_bayar = transaksi.sisa_bayar_real
+        transaksi.save()
+
+        # Cek apakah setelah pembayaran ini sudah lunas
+        if transaksi.sudah_lunas:
+            messages.success(
+                request,
+                f'Pembayaran berhasil dicatat. '
+                f'🎉 Transaksi {transaksi.no_transaksi} sudah LUNAS!'
+            )
+        else:
+            messages.success(
+                request,
+                f'Pembayaran {int(jumlah):,} berhasil dicatat. '
+                f'Sisa bayar: Rp {int(transaksi.sisa_bayar_real):,}.'
+            )
+
+    return redirect('transaksi_detail', pk=transaksi.pk)
+
+@login_required
+def hapus_pembayaran(request, pk, pembayaran_pk):
+    """Hapus pembayaran"""
+    transaksi = get_object_or_404(Transaksi, pk=pk)
+    pembayaran = get_object_or_404(
+        Pembayaran, pk=pembayaran_pk, transaksi=transaksi
+    )
+
+    # Hanya admin yang bisa hapus pembayaran
+    if request.user.profile.role != 'admin':
+        messages.error(
+            request,
+            'Hanya admin yang bisa menghapus pembayaran.'
+        )
+        return redirect('transaksi_detail', pk=transaksi.pk)
+
+    if request.method == 'POST':
+        pembayaran.delete()
+        messages.success(request, 'Pembayaran berhasil dihapus.')
+
+    return redirect('transaksi_detail', pk=transaksi.pk)

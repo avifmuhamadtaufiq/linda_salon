@@ -50,6 +50,25 @@ class Transaksi(models.Model):
     def total_setelah_diskon(self):
         return self.total_harga - self.diskon
 
+    @property
+    def total_sudah_bayar(self):
+        """Total pembayaran termasuk DP + cicilan"""
+        from django.db.models import Sum
+        cicilan = self.pembayaran.aggregate(
+            total=Sum('jumlah')
+        )['total'] or 0
+        return self.uang_muka + cicilan
+
+    @property
+    def sisa_bayar_real(self):
+        """Sisa bayar setelah semua pembayaran"""
+        return self.total_setelah_diskon - self.total_sudah_bayar
+
+    @property
+    def sudah_lunas(self):
+        """Cek apakah sudah lunas"""
+        return self.sisa_bayar_real <= 0
+
 
     class Meta:
         verbose_name = 'Transaksi'
@@ -71,3 +90,34 @@ class DetailTransaksi(models.Model):
 
     class Meta:
         verbose_name = 'Detail Transaksi'
+
+
+class Pembayaran(models.Model):
+    METODE_CHOICES = [
+        ('tunai', 'Tunai'),
+        ('transfer', 'Transfer Bank'),
+        ('qris', 'QRIS'),
+        ('lainnya', 'Lainnya'),
+    ]
+    transaksi = models.ForeignKey(
+        Transaksi, on_delete=models.CASCADE,
+        related_name='pembayaran'
+    )
+    jumlah = models.DecimalField(max_digits=15, decimal_places=0)
+    metode = models.CharField(
+        max_length=20, choices=METODE_CHOICES, default='tunai'
+    )
+    keterangan = models.CharField(max_length=200, blank=True)
+    dicatat_oleh = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True,
+        related_name='pembayaran_dicatat'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.transaksi.no_transaksi} - {self.jumlah}"
+
+    class Meta:
+        verbose_name = 'Pembayaran'
+        verbose_name_plural = 'Riwayat Pembayaran'
+        ordering = ['created_at']
