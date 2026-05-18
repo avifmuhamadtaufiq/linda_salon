@@ -2462,3 +2462,320 @@ class InvoiceViewTest(TestCase):
                     args=[self.transaksi.pk])
             )
             self.assertEqual(response.status_code, 200)
+
+class RiwayatPembayaranTest(TestCase):
+    """Test fitur riwayat pembayaran / cicilan"""
+
+    def setUp(self):
+        self.client = Client()
+        self.admin = User.objects.create_user(
+            username='admin_bayar',
+            password='admin123'
+        )
+        UserProfile.objects.create(user=self.admin, role='admin')
+
+        self.karyawan = User.objects.create_user(
+            username='karyawan_bayar',
+            password='karyawan123'
+        )
+        UserProfile.objects.create(user=self.karyawan, role='karyawan')
+
+        self.barang = Barang.objects.create(
+            kode='PB001',
+            nama='Barang Pembayaran',
+            stok_total=10,
+            stok_tersedia=10,
+            harga_sewa=Decimal('50000'),
+            kondisi='baik'
+        )
+
+        # Transaksi dengan sisa bayar 400000
+        self.transaksi = Transaksi.objects.create(
+            no_transaksi='SW20260518PB1',
+            pelanggan_nama='Test Pembayaran',
+            pelanggan_hp='08100000060',
+            tanggal_sewa=datetime.date(2026, 5, 18),
+            tanggal_kembali=datetime.date(2026, 5, 20),
+            uang_muka=Decimal('100000'),
+            diskon=Decimal('0'),
+            total_harga=Decimal('500000'),
+            sisa_bayar=Decimal('400000'),
+            status='menunggu',
+            dibuat_oleh=self.admin,
+        )
+
+    def test_tambah_pembayaran_berhasil(self):
+        """Test tambah pembayaran berhasil"""
+        self.client.login(username='admin_bayar', password='admin123')
+        response = self.client.post(
+            reverse('tambah_pembayaran', args=[self.transaksi.pk]),
+            {
+                'jumlah': '100000',
+                'metode': 'tunai',
+                'keterangan': 'Cicilan 1',
+            }
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            self.transaksi.pembayaran.count(), 1
+        )
+        pembayaran = self.transaksi.pembayaran.first()
+        self.assertEqual(pembayaran.jumlah, Decimal('100000'))
+        self.assertEqual(pembayaran.metode, 'tunai')
+        self.assertEqual(pembayaran.keterangan, 'Cicilan 1')
+
+    def test_tambah_pembayaran_update_sisa_bayar(self):
+        """Test sisa bayar berkurang setelah pembayaran"""
+        self.client.login(username='admin_bayar', password='admin123')
+        self.client.post(
+            reverse('tambah_pembayaran', args=[self.transaksi.pk]),
+            {'jumlah': '150000', 'metode': 'transfer', 'keterangan': ''}
+        )
+        self.transaksi.refresh_from_db()
+        # Sisa bayar: 400000 - 150000 = 250000
+        self.assertEqual(self.transaksi.sisa_bayar, Decimal('250000'))
+
+    def test_tambah_pembayaran_melebihi_sisa_gagal(self):
+        """Test pembayaran melebihi sisa bayar gagal"""
+        self.client.login(username='admin_bayar', password='admin123')
+        response = self.client.post(
+            reverse('tambah_pembayaran', args=[self.transaksi.pk]),
+            {'jumlah': '999999', 'metode': 'tunai', 'keterangan': ''}
+        )
+        self.assertEqual(response.status_code, 302)
+        # Tidak ada pembayaran tersimpan
+        self.assertEqual(self.transaksi.pembayaran.count(), 0)
+        # Sisa bayar tidak berubah
+        self.transaksi.refresh_from_db()
+        self.assertEqual(self.transaksi.sisa_bayar, Decimal('400000'))
+
+    def test_tambah_pembayaran_jumlah_nol_gagal(self):
+        """Test pembayaran dengan jumlah 0 gagal"""
+        self.client.login(username='admin_bayar', password='admin123')
+        response = self.client.post(
+            reverse('tambah_pembayaran', args=[self.transaksi.pk]),
+            {'jumlah': '0', 'metode': 'tunai', 'keterangan': ''}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.transaksi.pembayaran.count(), 0)
+
+    def test_tambah_pembayaran_negatif_gagal(self):
+        """Test pembayaran dengan jumlah negatif gagal"""
+        self.client.login(username='admin_bayar', password='admin123')
+        response = self.client.post(
+            reverse('tambah_pembayaran', args=[self.transaksi.pk]),
+            {'jumlah': '-50000', 'metode': 'tunai', 'keterangan': ''}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.transaksi.pembayaran.count(), 0)
+
+    def test_transaksi_batal_tidak_bisa_bayar(self):
+        """Test transaksi batal tidak bisa tambah pembayaran"""
+        self.transaksi.status = 'batal'
+        self.transaksi.alasan_batal = 'Test'
+        self.transaksi.save()
+
+        self.client.login(username='admin_bayar', password='admin123')
+        response = self.client.post(
+            reverse('tambah_pembayaran', args=[self.transaksi.pk]),
+            {'jumlah': '100000', 'metode': 'tunai', 'keterangan': ''}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.transaksi.pembayaran.count(), 0)
+
+    def test_property_total_sudah_bayar(self):
+        """Test property total_sudah_bayar"""
+        from apps.transactions.models import Pembayaran
+        # Tambah 2 cicilan
+        Pembayaran.objects.create(
+            transaksi=self.transaksi,
+            jumlah=Decimal('100000'),
+            metode='tunai',
+            dicatat_oleh=self.admin,
+        )
+        Pembayaran.objects.create(
+            transaksi=self.transaksi,
+            jumlah=Decimal('150000'),
+            metode='transfer',
+            dicatat_oleh=self.admin,
+        )
+        # total_sudah_bayar = uang_muka + cicilan1 + cicilan2
+        # = 100000 + 100000 + 150000 = 350000
+        self.assertEqual(
+            self.transaksi.total_sudah_bayar,
+            Decimal('350000')
+        )
+
+    def test_property_sisa_bayar_real(self):
+        """Test property sisa_bayar_real"""
+        from apps.transactions.models import Pembayaran
+        Pembayaran.objects.create(
+            transaksi=self.transaksi,
+            jumlah=Decimal('200000'),
+            metode='tunai',
+            dicatat_oleh=self.admin,
+        )
+        # sisa_bayar_real = total_setelah_diskon - total_sudah_bayar
+        # = 500000 - (100000 + 200000) = 200000
+        self.assertEqual(
+            self.transaksi.sisa_bayar_real,
+            Decimal('200000')
+        )
+
+    def test_property_sudah_lunas(self):
+        """Test property sudah_lunas"""
+        from apps.transactions.models import Pembayaran
+        # Belum lunas
+        self.assertFalse(self.transaksi.sudah_lunas)
+
+        # Tambah pembayaran sampai lunas
+        Pembayaran.objects.create(
+            transaksi=self.transaksi,
+            jumlah=Decimal('400000'),
+            metode='tunai',
+            dicatat_oleh=self.admin,
+        )
+        self.assertTrue(self.transaksi.sudah_lunas)
+
+    def test_lunas_tombol_tambah_bayar_hilang(self):
+        """Test tombol tambah bayar hilang saat lunas"""
+        from apps.transactions.models import Pembayaran
+        Pembayaran.objects.create(
+            transaksi=self.transaksi,
+            jumlah=Decimal('400000'),
+            metode='tunai',
+            dicatat_oleh=self.admin,
+        )
+        self.client.login(username='admin_bayar', password='admin123')
+        response = self.client.get(
+            reverse('transaksi_detail', args=[self.transaksi.pk])
+        )
+       
+        self.assertEqual(response.status_code, 200)
+        # Tombol tambah bayar tidak tampil
+        self.assertNotContains(response, '<i class="bi bi-plus-lg me-1"></i> Tambah Pembayaran')
+
+    def test_multi_cicilan(self):
+        """Test beberapa cicilan berurutan"""
+        from apps.transactions.models import Pembayaran
+        self.client.login(username='admin_bayar', password='admin123')
+
+        # Cicilan 1
+        self.client.post(
+            reverse('tambah_pembayaran', args=[self.transaksi.pk]),
+            {'jumlah': '100000', 'metode': 'tunai', 'keterangan': 'Cicilan 1'}
+        )
+        # Cicilan 2
+        self.client.post(
+            reverse('tambah_pembayaran', args=[self.transaksi.pk]),
+            {'jumlah': '150000', 'metode': 'transfer', 'keterangan': 'Cicilan 2'}
+        )
+        # Cicilan 3 - pelunasan
+        self.client.post(
+            reverse('tambah_pembayaran', args=[self.transaksi.pk]),
+            {'jumlah': '150000', 'metode': 'qris', 'keterangan': 'Pelunasan'}
+        )
+
+        self.assertEqual(self.transaksi.pembayaran.count(), 3)
+        self.assertTrue(self.transaksi.sudah_lunas)
+
+    def test_hapus_pembayaran_oleh_admin(self):
+        """Test admin bisa hapus pembayaran"""
+        from apps.transactions.models import Pembayaran
+        bayar = Pembayaran.objects.create(
+            transaksi=self.transaksi,
+            jumlah=Decimal('100000'),
+            metode='tunai',
+            dicatat_oleh=self.admin,
+        )
+        self.client.login(username='admin_bayar', password='admin123')
+        response = self.client.post(
+            reverse('hapus_pembayaran',
+                args=[self.transaksi.pk, bayar.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.transaksi.pembayaran.count(), 0)
+
+    def test_hapus_pembayaran_oleh_karyawan_gagal(self):
+        """Test karyawan tidak bisa hapus pembayaran"""
+        from apps.transactions.models import Pembayaran
+        bayar = Pembayaran.objects.create(
+            transaksi=self.transaksi,
+            jumlah=Decimal('100000'),
+            metode='tunai',
+            dicatat_oleh=self.admin,
+        )
+        self.client.login(username='karyawan_bayar', password='karyawan123')
+        response = self.client.post(
+            reverse('hapus_pembayaran',
+                args=[self.transaksi.pk, bayar.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+        # Pembayaran tidak terhapus
+        self.assertEqual(self.transaksi.pembayaran.count(), 1)
+
+    def test_pembayaran_tampil_di_detail(self):
+        """Test riwayat pembayaran tampil di detail transaksi"""
+        from apps.transactions.models import Pembayaran
+        Pembayaran.objects.create(
+            transaksi=self.transaksi,
+            jumlah=Decimal('100000'),
+            metode='tunai',
+            keterangan='Cicilan pertama',
+            dicatat_oleh=self.admin,
+        )
+        self.client.login(username='admin_bayar', password='admin123')
+        response = self.client.get(
+            reverse('transaksi_detail', args=[self.transaksi.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Cicilan pertama')
+        self.assertContains(response, 'Tunai')
+
+    def test_karyawan_bisa_tambah_pembayaran_transaksi_sendiri(self):
+        """Test karyawan bisa tambah pembayaran transaksi miliknya"""
+        transaksi_karyawan = Transaksi.objects.create(
+            no_transaksi='SW20260518PB2',
+            pelanggan_nama='Test Karyawan Bayar',
+            pelanggan_hp='08100000061',
+            tanggal_sewa=datetime.date(2026, 5, 18),
+            tanggal_kembali=datetime.date(2026, 5, 20),
+            uang_muka=Decimal('50000'),
+            diskon=Decimal('0'),
+            total_harga=Decimal('300000'),
+            sisa_bayar=Decimal('250000'),
+            status='menunggu',
+            dibuat_oleh=self.karyawan,
+        )
+        self.client.login(username='karyawan_bayar', password='karyawan123')
+        response = self.client.post(
+            reverse('tambah_pembayaran', args=[transaksi_karyawan.pk]),
+            {'jumlah': '100000', 'metode': 'tunai', 'keterangan': ''}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(transaksi_karyawan.pembayaran.count(), 1)
+
+    def test_karyawan_tidak_bisa_tambah_pembayaran_transaksi_orang_lain(self):
+        """Test karyawan tidak bisa tambah pembayaran transaksi orang lain"""
+        self.client.login(username='karyawan_bayar', password='karyawan123')
+        response = self.client.post(
+            reverse('tambah_pembayaran', args=[self.transaksi.pk]),
+            {'jumlah': '100000', 'metode': 'tunai', 'keterangan': ''}
+        )
+        self.assertEqual(response.status_code, 302)
+        # Pembayaran tidak tersimpan
+        self.assertEqual(self.transaksi.pembayaran.count(), 0)
+
+    def test_transaksi_selesai_bisa_tambah_pembayaran(self):
+        """Test transaksi selesai tetap bisa tambah pembayaran"""
+        self.transaksi.status = 'selesai'
+        self.transaksi.tanggal_kembali_aktual = datetime.date(2026, 5, 20)
+        self.transaksi.save()
+
+        self.client.login(username='admin_bayar', password='admin123')
+        response = self.client.post(
+            reverse('tambah_pembayaran', args=[self.transaksi.pk]),
+            {'jumlah': '100000', 'metode': 'tunai', 'keterangan': 'Bayar setelah selesai'}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.transaksi.pembayaran.count(), 1)
