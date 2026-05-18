@@ -2222,3 +2222,243 @@ class DiskonTransaksiTest(TestCase):
         response = self.client.get(reverse('transaksi_list'))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'SW20260509DK5')
+
+
+class InvoiceViewTest(TestCase):
+    """Test fitur invoice PDF transaksi"""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='admin_invoice',
+            password='admin123'
+        )
+        UserProfile.objects.create(user=self.user, role='admin')
+        self.client.login(username='admin_invoice', password='admin123')
+
+        from apps.inventory.models import Gudang
+        self.gudang = Gudang.objects.create(
+            nama='Gudang Invoice',
+            alamat='Jl. Invoice No. 1',
+            aktif=True
+        )
+        self.kategori = Kategori.objects.create(nama='Invoice Test')
+        self.barang = Barang.objects.create(
+            kode='IV001',
+            nama='Barang Invoice',
+            kategori=self.kategori,
+            gudang=self.gudang,
+            stok_total=10,
+            stok_tersedia=10,
+            harga_sewa=Decimal('50000'),
+            kondisi='baik'
+        )
+        self.pelanggan = Pelanggan.objects.create(
+            nama='Pelanggan Invoice',
+            hp='08100000050',
+            alamat='Jl. Test No. 1'
+        )
+
+        # Transaksi dengan diskon
+        self.transaksi = Transaksi.objects.create(
+            no_transaksi='SW20260510IV1',
+            pelanggan=self.pelanggan,
+            pelanggan_nama=self.pelanggan.nama,
+            pelanggan_hp=self.pelanggan.hp,
+            pelanggan_alamat=self.pelanggan.alamat,
+            acara='Pernikahan Invoice',
+            tanggal_sewa=datetime.date(2026, 5, 10),
+            tanggal_kembali=datetime.date(2026, 5, 12),
+            uang_muka=Decimal('100000'),
+            diskon=Decimal('50000'),
+            total_harga=Decimal('500000'),
+            sisa_bayar=Decimal('350000'),
+            catatan='Catatan invoice test',
+            status='menunggu',
+            dibuat_oleh=self.user,
+        )
+        DetailTransaksi.objects.create(
+            transaksi=self.transaksi,
+            barang=self.barang,
+            jumlah=5,
+            jumlah_hari=2,
+            harga_satuan=Decimal('50000'),
+            subtotal=Decimal('500000'),
+            kondisi_keluar='Baik'
+        )
+
+    def test_invoice_bisa_diakses(self):
+        """Test halaman invoice bisa diakses"""
+        response = self.client.get(
+            reverse('transaksi_invoice', args=[self.transaksi.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(
+            response, 'transactions/transaksi_invoice.html'
+        )
+
+    def test_invoice_redirect_kalau_belum_login(self):
+        """Test redirect ke login kalau belum login"""
+        self.client.logout()
+        response = self.client.get(
+            reverse('transaksi_invoice', args=[self.transaksi.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response['Location'])
+
+    def test_invoice_404_transaksi_tidak_ada(self):
+        """Test 404 kalau transaksi tidak ditemukan"""
+        response = self.client.get(
+            reverse('transaksi_invoice', args=[99999])
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_invoice_tampilkan_no_transaksi(self):
+        """Test invoice tampilkan nomor transaksi"""
+        response = self.client.get(
+            reverse('transaksi_invoice', args=[self.transaksi.pk])
+        )
+        self.assertContains(response, 'SW20260510IV1')
+
+    def test_invoice_tampilkan_info_pelanggan(self):
+        """Test invoice tampilkan info pelanggan"""
+        response = self.client.get(
+            reverse('transaksi_invoice', args=[self.transaksi.pk])
+        )
+        self.assertContains(response, 'Pelanggan Invoice')
+        self.assertContains(response, '08100000050')
+        self.assertContains(response, 'Jl. Test No. 1')
+
+    def test_invoice_tampilkan_acara(self):
+        """Test invoice tampilkan nama acara"""
+        response = self.client.get(
+            reverse('transaksi_invoice', args=[self.transaksi.pk])
+        )
+        self.assertContains(response, 'Pernikahan Invoice')
+
+    def test_invoice_tampilkan_tanggal(self):
+        """Test invoice tampilkan tanggal sewa dan kembali"""
+        response = self.client.get(
+            reverse('transaksi_invoice', args=[self.transaksi.pk])
+        )
+        self.assertContains(response, '10 Mei 2026')
+        self.assertContains(response, '12 Mei 2026')
+
+    def test_invoice_tampilkan_barang(self):
+        """Test invoice tampilkan barang yang disewa"""
+        response = self.client.get(
+            reverse('transaksi_invoice', args=[self.transaksi.pk])
+        )
+        self.assertContains(response, 'Barang Invoice')
+        self.assertContains(response, 'IV001')
+
+    def test_invoice_tampilkan_gudang(self):
+        """Test invoice tampilkan gudang barang"""
+        response = self.client.get(
+            reverse('transaksi_invoice', args=[self.transaksi.pk])
+        )
+        self.assertContains(response, 'Gudang Invoice')
+
+    def test_invoice_tampilkan_jumlah_dan_hari(self):
+        """Test invoice tampilkan jumlah dan jumlah hari"""
+        response = self.client.get(
+            reverse('transaksi_invoice', args=[self.transaksi.pk])
+        )
+        self.assertContains(response, '5')  # jumlah
+        self.assertContains(response, '2')  # jumlah hari
+
+    def test_invoice_tampilkan_harga(self):
+        """Test invoice tampilkan harga satuan dan subtotal"""
+        response = self.client.get(
+            reverse('transaksi_invoice', args=[self.transaksi.pk])
+        )
+        self.assertContains(response, '50.000')
+        self.assertContains(response, '500.000')
+
+    def test_invoice_tampilkan_diskon(self):
+        """Test invoice tampilkan diskon"""
+        response = self.client.get(
+            reverse('transaksi_invoice', args=[self.transaksi.pk])
+        )
+        self.assertContains(response, '50.000')  # diskon
+        self.assertContains(response, 'Diskon')
+
+    def test_invoice_tampilkan_uang_muka(self):
+        """Test invoice tampilkan uang muka"""
+        response = self.client.get(
+            reverse('transaksi_invoice', args=[self.transaksi.pk])
+        )
+        self.assertContains(response, '100.000')
+        self.assertContains(response, 'Uang Muka')
+
+    def test_invoice_tampilkan_sisa_bayar(self):
+        """Test invoice tampilkan sisa bayar"""
+        response = self.client.get(
+            reverse('transaksi_invoice', args=[self.transaksi.pk])
+        )
+        self.assertContains(response, '350.000')
+        self.assertContains(response, 'SISA BAYAR')
+
+    def test_invoice_tampilkan_catatan(self):
+        """Test invoice tampilkan catatan transaksi"""
+        response = self.client.get(
+            reverse('transaksi_invoice', args=[self.transaksi.pk])
+        )
+        self.assertContains(response, 'Catatan invoice test')
+
+    def test_invoice_tampilkan_status(self):
+        """Test invoice tampilkan status transaksi"""
+        response = self.client.get(
+            reverse('transaksi_invoice', args=[self.transaksi.pk])
+        )
+        self.assertContains(response, 'Menunggu')
+
+    def test_invoice_tanpa_diskon(self):
+        """Test invoice tampil normal meski tanpa diskon"""
+        transaksi_tanpa_diskon = Transaksi.objects.create(
+            no_transaksi='SW20260510IV2',
+            pelanggan_nama='Test Tanpa Diskon',
+            pelanggan_hp='08100000051',
+            tanggal_sewa=datetime.date(2026, 5, 10),
+            tanggal_kembali=datetime.date(2026, 5, 11),
+            uang_muka=Decimal('50000'),
+            diskon=Decimal('0'),
+            total_harga=Decimal('200000'),
+            sisa_bayar=Decimal('150000'),
+            status='menunggu',
+            dibuat_oleh=self.user,
+        )
+        response = self.client.get(
+            reverse('transaksi_invoice',
+                args=[transaksi_tanpa_diskon.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        # Label diskon tidak tampil kalau diskon 0
+        self.assertNotContains(response, 'Total Setelah Diskon')
+
+    def test_invoice_bisa_diakses_karyawan(self):
+        """Test karyawan juga bisa akses invoice"""
+        karyawan = User.objects.create_user(
+            username='karyawan_invoice',
+            password='karyawan123'
+        )
+        UserProfile.objects.create(user=karyawan, role='karyawan')
+        self.client.login(
+            username='karyawan_invoice',
+            password='karyawan123'
+        )
+        response = self.client.get(
+            reverse('transaksi_invoice', args=[self.transaksi.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_invoice_semua_status(self):
+        """Test invoice bisa diakses di semua status transaksi"""
+        for status in ['menunggu', 'siap_diambil', 'disewa', 'selesai']:
+            self.transaksi.status = status
+            self.transaksi.save()
+            response = self.client.get(
+                reverse('transaksi_invoice',
+                    args=[self.transaksi.pk])
+            )
+            self.assertEqual(response.status_code, 200)
