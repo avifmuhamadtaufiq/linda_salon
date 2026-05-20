@@ -6,7 +6,7 @@ from django.db.models import Q, Sum
 from django.utils import timezone
 from .models import Barang, Kategori
 from .forms import BarangForm, KategoriForm
-from .models import Barang, Kategori, Gudang
+from .models import Gudang
 from apps.transactions.models import Transaksi
 
 

@@ -4,7 +4,6 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Count
 from django.utils import timezone
 from apps.transactions.models import Transaksi, DetailTransaksi
-from apps.inventory.models import Barang
 import datetime
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side

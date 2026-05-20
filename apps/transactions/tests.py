@@ -2657,7 +2657,6 @@ class RiwayatPembayaranTest(TestCase):
 
     def test_multi_cicilan(self):
         """Test beberapa cicilan berurutan"""
-        from apps.transactions.models import Pembayaran
         self.client.login(username='admin_bayar', password='admin123')
 
         # Cicilan 1

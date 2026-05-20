@@ -3,7 +3,7 @@ from apps.inventory.models import Kategori, Barang, Gudang
 from apps.inventory.forms import BarangForm, KategoriForm
 from apps.accounts.models import UserProfile
 from django.contrib.auth.models import User
-from django.test import TestCase, Client
+from django.test import Client
 from django.urls import reverse
 from decimal import Decimal
 
@@ -307,7 +307,6 @@ class BarangViewTest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(Barang.objects.filter(pk=self.barang.pk).exists())
 
-from apps.inventory.models import Kategori, Barang, Gudang
 
 
 class GudangModelTest(TestCase):
@@ -357,7 +356,6 @@ class GudangFormTest(TestCase):
 
     def test_gudang_form_valid(self):
         # Test form gudang valid
-        from apps.inventory.views import gudang_create
         self.gudang = Gudang.objects.create(
             nama='Gudang Kubang',
             alamat='Jl. Kubang No. 2',
