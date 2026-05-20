@@ -2,7 +2,6 @@ from django.contrib.auth.models import User
 from django.db import models
 
 from apps.inventory.models import Barang
-from apps.pelanggan.models import Pelanggan
 
 
 class Transaksi(models.Model):
@@ -14,10 +13,12 @@ class Transaksi(models.Model):
         ("batal", "Dibatalkan"),
     ]
 
-    # 1. Fields
+    pembayaran: models.Manager["Pembayaran"]
+    detail: models.Manager["DetailTransaksi"]
+
     no_transaksi = models.CharField(max_length=50, unique=True)
     pelanggan = models.ForeignKey(
-        Pelanggan,
+        "pelanggan.Pelanggan",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -53,16 +54,13 @@ class Transaksi(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # 2. Meta
     class Meta:
         verbose_name = "Transaksi"
         ordering = ["-created_at"]
 
-    # 3. Dunder Methods
     def __str__(self):
         return f"{self.no_transaksi} - {self.pelanggan_nama}"
 
-    # 4. Properties
     @property
     def total_setelah_diskon(self):
         return self.total_harga - self.diskon
@@ -87,7 +85,6 @@ class Transaksi(models.Model):
 
 
 class DetailTransaksi(models.Model):
-    # 1. Fields
     transaksi = models.ForeignKey(
         Transaksi, on_delete=models.CASCADE, related_name="detail"
     )
@@ -101,11 +98,9 @@ class DetailTransaksi(models.Model):
     kondisi_keluar = models.CharField(max_length=100, blank=True)
     kondisi_kembali = models.CharField(max_length=100, blank=True)
 
-    # 2. Meta
     class Meta:
         verbose_name = "Detail Transaksi"
 
-    # 3. Dunder Methods
     def __str__(self):
         return f"{self.barang.nama} x{self.jumlah} x{self.jumlah_hari} hari"
 
@@ -118,7 +113,6 @@ class Pembayaran(models.Model):
         ("lainnya", "Lainnya"),
     ]
 
-    # 1. Fields
     transaksi = models.ForeignKey(
         Transaksi, on_delete=models.CASCADE, related_name="pembayaran"
     )
@@ -130,12 +124,10 @@ class Pembayaran(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
-    # 2. Meta
     class Meta:
         verbose_name = "Pembayaran"
         verbose_name_plural = "Riwayat Pembayaran"
         ordering = ["created_at"]
 
-    # 3. Dunder Methods
     def __str__(self):
         return f"{self.transaksi.no_transaksi} - {self.jumlah}"
