@@ -1,12 +1,14 @@
-from django.test import TestCase, Client
-from django.urls import reverse
-from django.contrib.auth.models import User
-from apps.accounts.models import UserProfile
-from apps.inventory.models import Kategori, Barang, Gudang
-from apps.pelanggan.models import Pelanggan
-from apps.transactions.models import Transaksi, DetailTransaksi
-from decimal import Decimal
 import datetime
+from decimal import Decimal
+
+from django.contrib.auth.models import User
+from django.test import Client, TestCase
+from django.urls import reverse
+
+from apps.accounts.models import UserProfile
+from apps.inventory.models import Barang, Gudang, Kategori
+from apps.pelanggan.models import Pelanggan
+from apps.transactions.models import DetailTransaksi, Transaksi
 
 
 class AlurSewaLengkapTest(TestCase):
@@ -459,7 +461,7 @@ class PembatalanTransaksiIntegrationTest(TestCase):
         )
 
         # Tambah 2 barang
-        detail1 = DetailTransaksi.objects.create(
+        DetailTransaksi.objects.create(
             transaksi=transaksi,
             barang=self.barang1,
             jumlah=3,
@@ -467,7 +469,7 @@ class PembatalanTransaksiIntegrationTest(TestCase):
             harga_satuan=Decimal('20000'),
             subtotal=Decimal('180000'),
         )
-        detail2 = DetailTransaksi.objects.create(
+        DetailTransaksi.objects.create(
             transaksi=transaksi,
             barang=self.barang2,
             jumlah=1,
@@ -629,7 +631,7 @@ class AlurStatusLengkapTest(TestCase):
             status='menunggu',
             dibuat_oleh=self.user,
         )
-        detail = DetailTransaksi.objects.create(
+        DetailTransaksi.objects.create(
             transaksi=transaksi,
             barang=self.barang,
             jumlah=3,
@@ -671,7 +673,7 @@ class AlurStatusLengkapTest(TestCase):
             status='siap_diambil',
             dibuat_oleh=self.user,
         )
-        detail = DetailTransaksi.objects.create(
+        DetailTransaksi.objects.create(
             transaksi=transaksi,
             barang=self.barang,
             jumlah=2,

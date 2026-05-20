@@ -1,16 +1,19 @@
-from django.shortcuts import render, redirect, get_object_or_404
+import datetime
+from decimal import Decimal
+
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.contrib import messages
 from django.db import transaction
 from django.db.models import Q
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from .models import Transaksi, DetailTransaksi, Pembayaran
+
 from apps.inventory.models import Barang
 from apps.pelanggan.models import Pelanggan
 
-import datetime
-from decimal import Decimal
+from .models import DetailTransaksi, Pembayaran, Transaksi
+
 
 def cek_akses_transaksi(user, transaksi):
     """

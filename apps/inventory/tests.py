@@ -1,11 +1,13 @@
-from django.test import TestCase
-from apps.inventory.models import Kategori, Barang, Gudang
-from apps.inventory.forms import BarangForm, KategoriForm
-from apps.accounts.models import UserProfile
-from django.contrib.auth.models import User
-from django.test import Client
-from django.urls import reverse
 from decimal import Decimal
+
+from django.contrib.auth.models import User
+from django.test import Client, TestCase
+from django.urls import reverse
+
+from apps.accounts.models import UserProfile
+from apps.inventory.forms import BarangForm, KategoriForm
+from apps.inventory.models import Barang, Gudang, Kategori
+
 
 class KategoriModelTest(TestCase):
 

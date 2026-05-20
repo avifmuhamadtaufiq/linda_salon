@@ -1,5 +1,7 @@
 from django.contrib import admin
-from .models import Transaksi, DetailTransaksi, Pembayaran
+
+from .models import DetailTransaksi, Pembayaran, Transaksi
+
 
 class DetailInline(admin.TabularInline):
     model = DetailTransaksi

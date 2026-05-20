@@ -1,13 +1,14 @@
-from django.test import TestCase
-from django.contrib.auth.models import User
-from apps.accounts.models import UserProfile
-from apps.inventory.models import Kategori, Barang
-from apps.pelanggan.models import Pelanggan
-from apps.transactions.models import Transaksi, DetailTransaksi
-from django.test import Client
-from django.urls import reverse
-from decimal import Decimal
 import datetime
+from decimal import Decimal
+
+from django.contrib.auth.models import User
+from django.test import Client, TestCase
+from django.urls import reverse
+
+from apps.accounts.models import UserProfile
+from apps.inventory.models import Barang, Kategori
+from apps.pelanggan.models import Pelanggan
+from apps.transactions.models import DetailTransaksi, Transaksi
 
 
 class TransaksiModelTest(TestCase):
