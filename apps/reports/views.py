@@ -1,4 +1,5 @@
 import datetime
+from typing import cast
 
 import openpyxl
 from django.contrib.auth.decorators import login_required
@@ -6,8 +7,10 @@ from django.db.models import Count, Sum
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
+from openpyxl.cell.cell import Cell
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.worksheet import Worksheet
 
 from apps.transactions.models import DetailTransaksi, Transaksi
 
@@ -94,28 +97,32 @@ def export_keuangan_excel(
     bulan_nama = get_bulan_nama(bulan)
 
     wb = openpyxl.Workbook()
-    ws = wb.active
+    ws = cast(Worksheet, wb.active)
     ws.title = f"Laporan {bulan_nama} {tahun}"
 
     # ===== HEADER JUDUL =====
     ws.merge_cells("A1:H1")
-    ws["A1"] = "Linda Salon — Manajemen Sewa Perlengkapan Pernikahan"
-    ws["A1"].font = Font(bold=True, size=14, color="1A1208")
-    ws["A1"].alignment = Alignment(horizontal="center")
+    cell_a1: Cell = ws["A1"]
+    cell_a1.value = "Linda Salon — Manajemen Sewa Perlengkapan Pernikahan"
+    cell_a1.font = Font(bold=True, size=14, color="1A1208")
+    cell_a1.alignment = Alignment(horizontal="center")
 
     ws.merge_cells("A2:H2")
-    ws["A2"] = f"LAPORAN KEUANGAN — {bulan_nama.upper()} {tahun}"
-    ws["A2"].font = Font(bold=True, size=12, color="C9A84C")
-    ws["A2"].alignment = Alignment(horizontal="center")
+    cell_a2: Cell = ws["A2"]
+    cell_a2.value = f"LAPORAN KEUANGAN — {bulan_nama.upper()} {tahun}"
+    cell_a2.font = Font(bold=True, size=12, color="C9A84C")
+    cell_a2.alignment = Alignment(horizontal="center")
 
     ws.merge_cells("A3:H3")
-    ws["A3"] = f"Dicetak: {timezone.now().strftime('%d %B %Y %H:%M')} WIB"
-    ws["A3"].font = Font(size=9, color="8A7355")
-    ws["A3"].alignment = Alignment(horizontal="center")
+    cell_a3: Cell = ws["A3"]
+    cell_a3.value = f"Dicetak: {timezone.now().strftime('%d %B %Y %H:%M')} WIB"
+    cell_a3.font = Font(size=9, color="8A7355")
+    cell_a3.alignment = Alignment(horizontal="center")
 
     # ===== SUMMARY =====
-    ws["A5"] = "RINGKASAN"
-    ws["A5"].font = Font(bold=True, size=11, color="C9A84C")
+    cell_a5: Cell = ws["A5"]
+    cell_a5.value = "RINGKASAN"
+    cell_a5.font = Font(bold=True, size=11, color="C9A84C")
 
     summary_data = [
         ("Total Omzet", f"Rp {int(total_omzet):,}"),
@@ -249,24 +256,27 @@ def laporan_barang(request):
 def export_barang_excel(detail):
     """Export laporan barang ke Excel"""
     wb = openpyxl.Workbook()
-    ws = wb.active
+    ws = cast(Worksheet, wb.active)
     ws.title = "Laporan Barang"
 
     # ===== HEADER JUDUL =====
     ws.merge_cells("A1:G1")
-    ws["A1"] = "Linda Salon — Manajemen Sewa Perlengkapan Pernikahan"
-    ws["A1"].font = Font(bold=True, size=14, color="1A1208")
-    ws["A1"].alignment = Alignment(horizontal="center")
+    cell_a1: Cell = ws["A1"]
+    cell_a1.value = "Linda Salon — Manajemen Sewa Perlengkapan Pernikahan"
+    cell_a1.font = Font(bold=True, size=14, color="1A1208")
+    cell_a1.alignment = Alignment(horizontal="center")
 
     ws.merge_cells("A2:G2")
-    ws["A2"] = "LAPORAN POPULARITAS BARANG"
-    ws["A2"].font = Font(bold=True, size=12, color="C9A84C")
-    ws["A2"].alignment = Alignment(horizontal="center")
+    cell_a2: Cell = ws["A2"]
+    cell_a2.value = "LAPORAN POPULARITAS BARANG"
+    cell_a2.font = Font(bold=True, size=12, color="C9A84C")
+    cell_a2.alignment = Alignment(horizontal="center")
 
     ws.merge_cells("A3:G3")
-    ws["A3"] = f"Dicetak: {timezone.now().strftime('%d %B %Y %H:%M')} WIB"
-    ws["A3"].font = Font(size=9, color="8A7355")
-    ws["A3"].alignment = Alignment(horizontal="center")
+    cell_a3: Cell = ws["A3"]
+    cell_a3.value = f"Dicetak: {timezone.now().strftime('%d %B %Y %H:%M')} WIB"
+    cell_a3.font = Font(size=9, color="8A7355")
+    cell_a3.alignment = Alignment(horizontal="center")
 
     # ===== HEADER TABEL =====
     header_row = 5
@@ -280,6 +290,7 @@ def export_barang_excel(detail):
         "Total Pendapatan",
     ]
     for col, header in enumerate(headers, 1):
+        # ws.cell strictly returns a Cell instance, keeping Pyrefly happy
         cell = ws.cell(row=header_row, column=col, value=header)
         style_header(cell)
 
