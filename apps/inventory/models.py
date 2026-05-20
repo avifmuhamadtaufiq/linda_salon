@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class Gudang(models.Model):
     nama = models.CharField(max_length=100)
     alamat = models.TextField(blank=True)
@@ -7,60 +8,68 @@ class Gudang(models.Model):
     aktif = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.nama
 
     class Meta:
-        verbose_name = 'Gudang'
-        verbose_name_plural = 'Daftar Gudang'
-        ordering = ['nama']
+        verbose_name = "Gudang"
+        verbose_name_plural = "Daftar Gudang"
+        ordering = ["nama"]
+
 
 class Kategori(models.Model):
     nama = models.CharField(max_length=100)
     deskripsi = models.TextField(blank=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.nama
 
     class Meta:
-        verbose_name = 'Kategori'
-        ordering = ['nama']
+        verbose_name = "Kategori"
+        ordering = ["nama"]
 
 
 class Barang(models.Model):
     KONDISI_CHOICES = [
-        ('baik', 'Baik'),
-        ('rusak_ringan', 'Rusak Ringan'),
-        ('rusak_berat', 'Rusak Berat'),
-        ('tidak_aktif', 'Tidak Aktif'),
+        ("baik", "Baik"),
+        ("rusak_ringan", "Rusak Ringan"),
+        ("rusak_berat", "Rusak Berat"),
     ]
+
     kode = models.CharField(max_length=50, unique=True)
     nama = models.CharField(max_length=200)
-    kategori = models.ForeignKey(Kategori, on_delete=models.SET_NULL, null=True, blank=True, related_name='barang')
+    kategori = models.ForeignKey(
+        Kategori,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="barang",
+    )
+    gudang = models.ForeignKey(
+        Gudang,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="barang",
+        verbose_name="Gudang",
+    )
     deskripsi = models.TextField(blank=True)
     stok_total = models.PositiveIntegerField(default=0)
     stok_tersedia = models.PositiveIntegerField(default=0)
     harga_sewa = models.DecimalField(max_digits=12, decimal_places=0, default=0)
-    kondisi = models.CharField(max_length=20, choices=KONDISI_CHOICES, default='baik')
-    foto = models.ImageField(upload_to='barang/', blank=True, null=True)
+    kondisi = models.CharField(max_length=20, choices=KONDISI_CHOICES, default="baik")
+    foto = models.ImageField(upload_to="barang/", blank=True, null=True)
     catatan = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    gudang = models.ForeignKey(
-        Gudang,
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='barang',
-        verbose_name='Gudang'
-    )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"[{self.kode}] {self.nama}"
 
     @property
-    def stok_disewa(self):
+    def stok_disewa(self) -> int:
         return self.stok_total - self.stok_tersedia
 
     class Meta:
-        verbose_name = 'Barang'
-        ordering = ['nama']
+        verbose_name = "Barang"
+        ordering = ["nama"]

@@ -1,103 +1,96 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.contrib import messages
 from django.db.models import Q
 from django.http import JsonResponse
-from .models import Pelanggan
+from django.shortcuts import get_object_or_404, redirect, render
+
 from .forms import PelangganForm
+from .models import Pelanggan
 
 
 @login_required
 def pelanggan_list(request):
-    q = request.GET.get('q', '')
+    q = request.GET.get("q", "")
     pelanggan = Pelanggan.objects.all()
     if q:
-        pelanggan = pelanggan.filter(
-            Q(nama__icontains=q) | Q(hp__icontains=q)
-        )
-
-    # Pagination
+        pelanggan = pelanggan.filter(Q(nama__icontains=q) | Q(hp__icontains=q))
     paginator = Paginator(pelanggan, 10)
-    page = request.GET.get('page', 1)
+    page = request.GET.get("page", 1)
     pelanggan_page = paginator.get_page(page)
-
-    return render(request, 'pelanggan/pelanggan_list.html', {
-        'pelanggan_list': pelanggan_page,
-        'page_obj': pelanggan_page,
-        'q': q,
-    })
+    return render(
+        request,
+        "pelanggan/pelanggan_list.html",
+        {"pelanggan_list": pelanggan_page, "page_obj": pelanggan_page, "q": q},
+    )
 
 
 @login_required
 def pelanggan_detail(request, pk):
     pelanggan = get_object_or_404(Pelanggan, pk=pk)
-    transaksi = pelanggan.transaksi_set.order_by('-created_at')[:10]
-    return render(request, 'pelanggan/pelanggan_detail.html', {
-        'pelanggan': pelanggan,
-        'transaksi': transaksi,
-    })
+    transaksi = pelanggan.transaksi_set.order_by("-created_at")[:10]
+    return render(
+        request,
+        "pelanggan/pelanggan_detail.html",
+        {"pelanggan": pelanggan, "transaksi": transaksi},
+    )
 
 
 @login_required
 def pelanggan_create(request):
     form = PelangganForm(request.POST or None)
-    if request.method == 'POST' and form.is_valid():
+    if request.method == "POST" and form.is_valid():
         pelanggan = form.save()
         messages.success(request, f'Pelanggan "{pelanggan.nama}" berhasil ditambahkan.')
-        # Kalau dari modal/ajax di halaman transaksi
-        if request.GET.get('next') == 'transaksi':
-            return redirect('transaksi_create')
-        return redirect('pelanggan_list')
-    return render(request, 'pelanggan/pelanggan_form.html', {
-        'form': form,
-        'title': 'Tambah Pelanggan Baru',
-    })
+        if request.GET.get("next") == "transaksi":
+            return redirect("transaksi_create")
+        return redirect("pelanggan_list")
+    return render(
+        request,
+        "pelanggan/pelanggan_form.html",
+        {"form": form, "title": "Tambah Pelanggan Baru"},
+    )
 
 
 @login_required
 def pelanggan_edit(request, pk):
     pelanggan = get_object_or_404(Pelanggan, pk=pk)
     form = PelangganForm(request.POST or None, instance=pelanggan)
-    if request.method == 'POST' and form.is_valid():
+    if request.method == "POST" and form.is_valid():
         form.save()
-        messages.success(request, f'Data pelanggan "{pelanggan.nama}" berhasil diperbarui.')
-        return redirect('pelanggan_list')
-    return render(request, 'pelanggan/pelanggan_form.html', {
-        'form': form,
-        'title': 'Edit Pelanggan',
-        'pelanggan': pelanggan,
-    })
+        messages.success(
+            request, f'Data pelanggan "{pelanggan.nama}" berhasil diperbarui.'
+        )
+        return redirect("pelanggan_list")
+    return render(
+        request,
+        "pelanggan/pelanggan_form.html",
+        {"form": form, "title": "Edit Pelanggan", "pelanggan": pelanggan},
+    )
 
 
 @login_required
 def pelanggan_delete(request, pk):
     pelanggan = get_object_or_404(Pelanggan, pk=pk)
-    if request.method == 'POST':
+    if request.method == "POST":
         pelanggan.delete()
-        messages.success(request, 'Pelanggan berhasil dihapus.')
-        return redirect('pelanggan_list')
-    return render(request, 'pelanggan/pelanggan_confirm_delete.html', {
-        'pelanggan': pelanggan,
-    })
+        messages.success(request, "Pelanggan berhasil dihapus.")
+        return redirect("pelanggan_list")
+    return render(
+        request,
+        "pelanggan/pelanggan_confirm_delete.html",
+        {"pelanggan": pelanggan},
+    )
 
 
 @login_required
 def pelanggan_search_api(request):
-    """API endpoint untuk autocomplete pencarian pelanggan di form transaksi"""
-    q = request.GET.get('q', '')
+    """API endpoint untuk autocomplete pencarian pelanggan di form transaksi."""
+    q = request.GET.get("q", "")
     if len(q) < 2:
-        return JsonResponse({'results': []})
-    pelanggan = Pelanggan.objects.filter(
-        Q(nama__icontains=q) | Q(hp__icontains=q)
-    )[:10]
+        return JsonResponse({"results": []})
+    pelanggan = Pelanggan.objects.filter(Q(nama__icontains=q) | Q(hp__icontains=q))[:10]
     results = [
-        {
-            'id': p.pk,
-            'nama': p.nama,
-            'hp': p.hp,
-            'alamat': p.alamat,
-        }
-        for p in pelanggan
+        {"id": p.pk, "nama": p.nama, "hp": p.hp, "alamat": p.alamat} for p in pelanggan
     ]
-    return JsonResponse({'results': results})
+    return JsonResponse({"results": results})

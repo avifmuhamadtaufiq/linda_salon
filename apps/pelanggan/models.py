@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class Pelanggan(models.Model):
     nama = models.CharField(max_length=200)
     hp = models.CharField(max_length=20)
@@ -10,9 +11,9 @@ class Pelanggan(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.nama} ({self.hp})"
 
     class Meta:
-        verbose_name = 'Pelanggan'
-        ordering = ['nama']
+        verbose_name = "Pelanggan"
+        ordering = ["nama"]

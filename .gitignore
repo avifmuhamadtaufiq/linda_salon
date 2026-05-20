@@ -7,3 +7,9 @@ media/
 .env
 .DS_Store
 *.log
+.venv/
+uv.lock
+.ruff_cache/
+.pyrefly/
+.venv/
+staticfiles/
