@@ -1,7 +1,9 @@
 import datetime
 from decimal import Decimal
+from typing import cast
 
 from django.contrib.auth.models import User
+from django.forms import ModelChoiceField
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -367,7 +369,9 @@ class GudangIntegrationTest(TestCase):
         self.gudang_kubang.save()
 
         form = BarangForm()
-        gudang_queryset = form.fields["gudang"].queryset
+        gudang_field = cast(ModelChoiceField, form.fields["gudang"])
+        gudang_queryset = gudang_field.queryset
+        assert gudang_queryset is not None
         self.assertIn(self.gudang_andir, gudang_queryset)
         self.assertNotIn(self.gudang_kubang, gudang_queryset)
 

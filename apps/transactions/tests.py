@@ -209,10 +209,13 @@ class TransaksiViewTest(TestCase):
         self.barang.stok_tersedia = 3
         self.barang.save()
 
+        first_detail = DetailTransaksi.objects.first()
+        assert first_detail is not None
+
         # Proses pengembalian
         response = self.client.post(
             reverse("transaksi_kembali", args=[self.transaksi.pk]),
-            {f"kondisi_kembali_{DetailTransaksi.objects.first().pk}": "Baik"},
+            {f"kondisi_kembali_{first_detail.pk}": "Baik"},
         )
 
         # Cek redirect setelah berhasil
@@ -1663,6 +1666,7 @@ class SearchBarangFormTest(TestCase):
         self.barang_andir.refresh_from_db()
         self.assertEqual(self.barang_andir.stok_tersedia, 7)
         detail = transaksi.detail.first()
+        assert detail is not None
         self.assertEqual(detail.subtotal, Decimal("90000"))
         self.assertEqual(detail.jumlah_hari, 2)
 
@@ -1937,6 +1941,7 @@ class DiskonTransaksiTest(TestCase):
         self.assertEqual(response.status_code, 302)
 
         transaksi = Transaksi.objects.filter(pelanggan_nama="Test Diskon").first()
+        assert transaksi is not None
 
         # Diskon 0
         self.assertEqual(transaksi.diskon, Decimal("0"))
@@ -2325,6 +2330,7 @@ class RiwayatPembayaranTest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(self.transaksi.pembayaran.count(), 1)
         pembayaran = self.transaksi.pembayaran.first()
+        assert pembayaran is not None
         self.assertEqual(pembayaran.jumlah, Decimal("100000"))
         self.assertEqual(pembayaran.metode, "tunai")
         self.assertEqual(pembayaran.keterangan, "Cicilan 1")

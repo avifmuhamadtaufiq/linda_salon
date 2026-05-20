@@ -325,6 +325,7 @@ class GudangModelTest(TestCase):
             harga_sewa=10000,
             kondisi="baik",
         )
+        assert barang.gudang is not None
         self.assertEqual(barang.gudang.nama, "Gudang Andir")
         self.assertEqual(self.gudang.barang.count(), 1)
 

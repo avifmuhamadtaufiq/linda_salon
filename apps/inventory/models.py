@@ -1,4 +1,8 @@
+from __future__ import annotations  # noqa: I001
+
 from django.db import models
+
+from apps.transactions.models import DetailTransaksi
 
 
 class Gudang(models.Model):
@@ -7,6 +11,8 @@ class Gudang(models.Model):
     keterangan = models.TextField(blank=True)
     aktif = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    barang: models.Manager[Barang]
 
     def __str__(self) -> str:
         return self.nama
@@ -62,6 +68,8 @@ class Barang(models.Model):
     catatan = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    detail_transaksi: models.Manager[DetailTransaksi]
 
     def __str__(self) -> str:
         return f"[{self.kode}] {self.nama}"

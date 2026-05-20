@@ -1,8 +1,6 @@
 from django.contrib.auth.models import User
 from django.db import models
 
-from apps.inventory.models import Barang
-
 
 class Transaksi(models.Model):
     STATUS_CHOICES = [
@@ -89,7 +87,7 @@ class DetailTransaksi(models.Model):
         Transaksi, on_delete=models.CASCADE, related_name="detail"
     )
     barang = models.ForeignKey(
-        Barang, on_delete=models.PROTECT, related_name="detail_transaksi"
+        "inventory.Barang", on_delete=models.PROTECT, related_name="detail_transaksi"
     )
     jumlah = models.PositiveIntegerField(default=1)
     jumlah_hari = models.PositiveIntegerField(default=1)
