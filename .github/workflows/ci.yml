@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_DB: linda_salon_test
+          POSTGRES_USER: linda_user
+          POSTGRES_PASSWORD: linda123
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run ruff linter
+        run: uv run ruff check .
+
+      - name: Run ruff formatter check
+        run: uv run ruff format --check .
+
+      - name: Run tests
+        env:
+          DJANGO_SETTINGS_MODULE: settings
+          DB_NAME: linda_salon_test
+          DB_USER: linda_user
+          DB_PASSWORD: linda123
+          DB_HOST: localhost
+          DB_PORT: 5432
+        run: uv run python manage.py test --verbosity=2
